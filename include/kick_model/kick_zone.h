@@ -56,6 +56,12 @@ public:
   Eigen::Vector3d convertWorldStateToKickState(const Eigen::Vector2d& ball_pos, const Eigen::Vector3d& player_state,
                                                double kick_dir) const;
 
+  /**
+   * Returns the list of the corners of the kick area.
+   * The only guarantee on the order of the corners is that they are ordered in a way which allows drawing
+   */
+  std::vector<Eigen::Vector2d> getKickAreaCorners(bool right_foot) const;
+
   Json::Value toJson() const override;
   void fromJson(const Json::Value& v, const std::string& dir_name) override;
   std::string getClassName() const override;

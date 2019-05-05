@@ -132,6 +132,22 @@ Eigen::Vector3d KickZone::convertWorldStateToKickState(const Eigen::Vector2d& ba
   return state_in_self;
 }
 
+std::vector<Eigen::Vector2d> KickZone::getKickAreaCorners(bool left_foot) const
+{
+  std::vector<Eigen::Vector2d> result = { Eigen::Vector2d(kick_x_min, kick_y_offset - kick_y_tol),
+                                          Eigen::Vector2d(kick_x_min, kick_y_offset + kick_y_tol),
+                                          Eigen::Vector2d(kick_x_max, kick_y_offset + kick_y_tol),
+                                          Eigen::Vector2d(kick_x_max, kick_y_offset - kick_y_tol) };
+  if (left_foot)
+  {
+    for (Eigen::Vector2d& corner : result)
+    {
+      corner.y() *= -1;
+    }
+  }
+  return result;
+}
+
 Json::Value KickZone::toJson() const
 {
   Json::Value v;
