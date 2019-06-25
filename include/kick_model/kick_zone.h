@@ -45,10 +45,13 @@ public:
   /// Can the robot kick from given state with specified foot
   bool canKick(bool right_foot, const Eigen::Vector3d& state) const;
 
+  /// Custom orientation tolerance theta_tol [rad]
+  bool canKick(bool right_foot, const Eigen::Vector3d& state, double theta_tol) const;
+
   /// Does the position of the ball allows the robot to kick with the left foot?
-  bool canKickLeftFoot(const Eigen::Vector3d& state) const;
+  bool canKickLeftFoot(const Eigen::Vector3d& state, double theta_tol) const;
   /// Does the position of the ball allows the robot to kick with the right foot?
-  bool canKickRightFoot(const Eigen::Vector3d& state) const;
+  bool canKickRightFoot(const Eigen::Vector3d& state, double theta_tol) const;
 
   /// ball_pos is in field referential [m]
   /// player_state is in field referential [m][m][rad]
@@ -67,6 +70,8 @@ public:
   std::string getClassName() const override;
 
 protected:
+  /// Target Point along x-axis
+  double kick_x;
   /// Minimal distance along x to kick
   double kick_x_min;
   /// Maximal distance along x to kick

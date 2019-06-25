@@ -23,7 +23,8 @@ static double normalizeAngle(double angle)
 }
 
 KickZone::KickZone()
-  : kick_x_min(0.12)
+  : kick_x(0.18)
+  , kick_x_min(0.12)
   , kick_x_max(0.22)
   , kick_y_tol(0.04)
   , kick_y_offset(0.08)
@@ -35,7 +36,7 @@ KickZone::KickZone()
 Eigen::Vector3d KickZone::getWishedPos(bool right_foot) const
 {
   Eigen::Vector3d result;
-  result(0) = (kick_x_min + kick_x_max) / 2;
+  result(0) = kick_x;
   result(1) = right_foot ? -kick_y_offset : kick_y_offset;
   result(2) = right_foot ? -kick_theta_offset : kick_theta_offset;
   return result;
@@ -74,7 +75,7 @@ double KickZone::getThetaTol() const
 
 bool KickZone::isKickable(const Eigen::Vector3d& state) const
 {
-  return canKickLeftFoot(state) || canKickRightFoot(state);
+  return canKick(true, state) || canKick(false, state);
 }
 
 bool KickZone::isKickable(const Eigen::Vector2d& ball_pos, const Eigen::Vector3d& player_state, double kick_dir) const
@@ -84,12 +85,17 @@ bool KickZone::isKickable(const Eigen::Vector2d& ball_pos, const Eigen::Vector3d
 
 bool KickZone::canKick(bool right_foot, const Eigen::Vector3d& state) const
 {
-  if (right_foot)
-    return canKickRightFoot(state);
-  return canKickLeftFoot(state);
+  return canKick(right_foot, state, kick_theta_tol);
 }
 
-bool KickZone::canKickLeftFoot(const Eigen::Vector3d& state) const
+bool KickZone::canKick(bool right_foot, const Eigen::Vector3d& state, double theta_tol) const
+{
+  if (right_foot)
+    return canKickRightFoot(state, theta_tol);
+  return canKickLeftFoot(state, theta_tol);
+}
+
+bool KickZone::canKickLeftFoot(const Eigen::Vector3d& state, double theta_tol) const
 {
   // Getting explicit names
   double ball_x = state(0);
@@ -99,12 +105,12 @@ bool KickZone::canKickLeftFoot(const Eigen::Vector3d& state) const
   // Check validity
   bool x_ok = ball_x > kick_x_min && ball_x < kick_x_max;
   bool y_ok = std::fabs(ball_y - kick_y_offset) < kick_y_tol;
-  bool theta_ok = std::fabs(kick_err) < kick_theta_tol;
+  bool theta_ok = std::fabs(kick_err) < theta_tol;
   bool kick_ok = x_ok && y_ok && theta_ok;
   return kick_ok;
 }
 
-bool KickZone::canKickRightFoot(const Eigen::Vector3d& state) const
+bool KickZone::canKickRightFoot(const Eigen::Vector3d& state, double theta_tol) const
 {
   // Getting explicit names
   double ball_x = state(0);
@@ -114,7 +120,7 @@ bool KickZone::canKickRightFoot(const Eigen::Vector3d& state) const
   // Check validity
   bool x_ok = ball_x > kick_x_min && ball_x < kick_x_max;
   bool y_ok = std::fabs(ball_y + kick_y_offset) < kick_y_tol;
-  bool theta_ok = std::fabs(kick_err) < kick_theta_tol;
+  bool theta_ok = std::fabs(kick_err) < theta_tol;
   bool kick_ok = x_ok && y_ok && theta_ok;
   return kick_ok;
 }
@@ -154,6 +160,7 @@ Json::Value KickZone::toJson() const
   // For angles: write human values
   double kick_theta_tol_deg = rad2deg(kick_theta_tol);
   double kick_theta_offset_deg = rad2deg(kick_theta_offset);
+  v["kick_x"] = kick_x;
   v["kick_x_min"] = kick_x_min;
   v["kick_x_max"] = kick_x_max;
   v["kick_y_tol"] = kick_y_tol;
@@ -170,6 +177,10 @@ void KickZone::fromJson(const Json::Value& v, const std::string& dir_name)
   rhoban_utils::tryRead(v, "kick_x_max", &kick_x_max);
   rhoban_utils::tryRead(v, "kick_y_tol", &kick_y_tol);
   rhoban_utils::tryRead(v, "kick_y_offset", &kick_y_offset);
+  if (v.isMember("kick_x"))
+    kick_x = rhoban_utils::read<double>(v, "kick_x");
+  else
+    kick_x = (kick_x_min + kick_x_max) / 2;
   // For angles: read human values
   double kick_theta_tol_deg = rhoban_utils::read<double>(v, "kick_theta_tol");
   double kick_theta_offset_deg = rhoban_utils::read<double>(v, "kick_theta_offset");
