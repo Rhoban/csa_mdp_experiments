@@ -1,0 +1,42 @@
+// To be used with black_box_learner
+{
+    "class name" : "LPPI",
+    "content" : {
+        // ### black_box_learner stuff
+        "problem" : {
+            "class name" : "DoubleIntegrator",
+            "content" : {
+            }
+        },
+        "nb_threads" : 1,
+        "trial_length" : 200,
+        "nb_evaluation_trials" : 2000,
+        "time_budget" : 360,
+        "discount" : 0.98,
+        // ### lppi stuff
+        "planner" : {
+            "optimizer" : {
+                "class name" : "CrossEntropy",
+                "content" : {
+                    "nb_generations" : 10,
+                    "population_size" : 100,
+                    "best_set_size" : 10
+                }
+            },
+            "look_ahead" : 2,
+            "rollouts_per_sample" : 5,
+            "discount" : 0.98
+        },
+        "value_trainer" : {
+            "class name" : "PWCForestTrainer",
+            "content" : {}
+        },
+        "policy_trainer" : {
+            "class name" : "PWLForestTrainer",
+            "content" : {}
+        },
+        "min_rollout_length" : 50,
+        "max_rollout_length" : 200,
+        "nb_entries" : 1000
+    }
+}
