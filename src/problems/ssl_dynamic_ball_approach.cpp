@@ -314,7 +314,6 @@ Eigen::VectorXd SSLDynamicBallApproach::getFinishStartingState(std::default_rand
   state(6) = robot_speed_theta;
   state.segment(7, 2) = ball_speed;
   state(9) = kick_dir_tol;
-  std::cout << "FinishStartingState: " << state.transpose() << std::endl;
   return state;
 }
 
