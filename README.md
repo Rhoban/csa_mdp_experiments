@@ -50,5 +50,23 @@ following procedure:
 - Copy configuration files for the blackbox experiment in the folder
 - Run a `black_box_learning` process from the experiment folder
 
+It requires the following elements in the `base` folder for the experiments:
+
+- A `black_box_learner.json` file containing the configuration of the experiment
+- All the configuration files at the same path as `json` files.
+  E.g. a file named `problem.json` which describes the problem and is referenced
+  by the learner
+
 This procedure has been thought to allow running simultaneous experiments from
 multiple computers using the same network storage.
+
+An example to run the experiments on two computers is:
+
+- On computer `1`: `mass_bb.sh <base> 10` which runs experiments 1 to 10
+- On computer `2`: `mass_bb.sh <base> 20 11` which runs experiments 11 to 20
+
+Since tasks are likely to be long to execute, it is highly recommended to use
+`nohup` or something similar to use them and to remember.
+
+The line above for computer `1` would therefore be replaced by:
+`nohup mass_bb.sh <base> 10 > learning_1_10 &`
