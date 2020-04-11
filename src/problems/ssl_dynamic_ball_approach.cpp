@@ -145,8 +145,7 @@ void SSLDynamicBallApproach::setMaxDist(double dist)
 
 bool SSLDynamicBallApproach::isTerminal(const Eigen::VectorXd& state) const
 {
-  bool is_success = (mode == Mode::Finish && isKickable(state)) || (mode == Mode::Wide && isFinishState(state));
-  return is_success || isColliding(state) || isOutOfSpace(state);
+  return isSuccess(state) || isColliding(state) || isOutOfSpace(state);
 }
 
 double SSLDynamicBallApproach::getReward(const Eigen::VectorXd& state, const Eigen::VectorXd& action,
@@ -154,11 +153,7 @@ double SSLDynamicBallApproach::getReward(const Eigen::VectorXd& state, const Eig
 {
   (void)state;
   (void)action;
-  if (mode == Mode::Finish && isKickable(dst))
-  {
-    return 0;
-  }
-  if (mode == Mode::Wide && isFinishState(dst))
+  if (isSuccess(dst))
   {
     return 0;
   }
@@ -315,6 +310,11 @@ Eigen::VectorXd SSLDynamicBallApproach::getFinishStartingState(std::default_rand
   state.segment(7, 2) = ball_speed;
   state(9) = kick_dir_tol;
   return state;
+}
+
+bool SSLDynamicBallApproach::isSuccess(const Eigen::VectorXd& state) const
+{
+  return (mode == Mode::Finish && isKickable(state)) || (mode == Mode::Wide && isFinishState(state));
 }
 
 bool SSLDynamicBallApproach::isFinishState(const Eigen::VectorXd& state) const

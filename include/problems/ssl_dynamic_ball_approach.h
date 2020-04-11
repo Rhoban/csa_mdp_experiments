@@ -51,6 +51,9 @@ public:
   Eigen::VectorXd getWideStartingState(std::default_random_engine* engine) const;
   Eigen::VectorXd getFinishStartingState(std::default_random_engine* engine) const;
 
+  /// Is current state a success (taking Mode into account)
+  bool isSuccess(const Eigen::VectorXd& state) const;
+
   /// Is current state inside
   bool isFinishState(const Eigen::VectorXd& state) const;
   /// Is the ball kickable in given state ?
