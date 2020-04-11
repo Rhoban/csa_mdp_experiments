@@ -41,7 +41,7 @@ do
         echo "ERROR: failed to create folder '${newFolder}'"
         exit -1
     fi
-    cp -r ${configFolder}/*.xml ${newFolder}/
+    cp -r ${configFolder}/*.json ${newFolder}/
     # Jumping in the folder
     cd ${newFolder}
     # Running the experiment
