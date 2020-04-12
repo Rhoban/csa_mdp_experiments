@@ -41,7 +41,7 @@ This binary can be used for multiple purposes:
 
 # SCRIPTS
 
-## mass_bb.sh
+## mass_bb
 
 This scripts allows to launch multiple experiments sequentially based on the
 following procedure:
@@ -95,7 +95,7 @@ a lot of unused functions, it has been extracted from
 ### `analyze_score_evolution.r`
 
 This script takes as input a folder containing multiple configurations, each of
-them containing various experiments produced by [mass_bb](#mass_bb.sh).
+them containing various experiments produced by [mass_bb](#mass_bb).
 An example of tree of the `root` folder is the following :
 ```bash
 root
