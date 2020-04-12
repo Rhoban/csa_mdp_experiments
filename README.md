@@ -41,7 +41,7 @@ This binary can be used for multiple purposes:
 
 # SCRIPTS
 
-## `mass_bb.sh`
+## `mass_bb.sh` [mass_bb]
 
 This scripts allows to launch multiple experiments sequentially based on the
 following procedure:
@@ -67,6 +67,57 @@ An example to run the experiments on two computers is:
 
 Since tasks are likely to be long to execute, it is highly recommended to use
 `nohup` or something similar to use them and to remember.
-
+ 
 The line above for computer `1` would therefore be replaced by:
-`nohup mass_bb.sh <base> 10 > learning_1_10 &`
+`nohup mass_bb.sh <base> 10 > learning_1_10 &` 
+
+# Plot scripts
+
+## Introduction
+
+One of the main purposes of this repository is to allow running large numbers of
+learning experiments based on the `rhoban_csa_mdp` environment, in order to
+improve the understanding of the effect the different parameters of a parameter
+or a problem.
+
+Visualization of the learning data through different kind of plots is essential
+to acquire insights on how to improve algorithms or solve problems.
+
+The folder `plots` contains scripts written in `R` allowing to
+interpret data. Some scripts are generic to all the learning experiments while
+some are specific to problems (e.g. displaying a 'run').
+
+DISCLAIMER: Currently, the folder only contains some rudimentary scripts with
+a lot of unused functions, it has been extracted from 
+
+## Generic scripts
+
+### `analyze_score_evolution.r`
+
+This script takes as input a folder containing multiple configurations, each of
+them containing various experiments produced by [mass_bb.sh][#mass_bb].
+An example of tree of the `root` folder is the following :
+```bash
+root
+├── config1
+│   ├── 001
+│   │   ├── results.csv
+│   │   └── ...
+│   ├── 002
+│   │   ├── results.csv
+│   │   └── ...
+│   ├── ...
+├── config2
+│   ├── 001
+│   │   ├── results.csv
+│   │   └── ...
+│   ├── 002
+│   │   ├── results.csv
+│   │   └── ...
+│   ├── ...
+└── ...
+```
+It displays the evolution of the reward through time, with a color based on the
+category and display the general trend of the score evolution for each category.
+Running `Rscript analyze_score_evolution.r root` produces the file
+`score_evolution.png` directly in the `root` folder.
