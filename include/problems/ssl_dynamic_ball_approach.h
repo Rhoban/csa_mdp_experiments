@@ -154,7 +154,9 @@ protected:
   /// (lower than max_dist to ensure the robot does not loose during the first steps)
   double ball_init_max_dist;
 
-  /// Maximal distance to target at start [m] (Wide mode)
+  /// Maximal distance to target at start [m]
+  double target_init_min_dist;
+  /// Maximal distance to target at start [m]
   double target_init_max_dist;
 
   /// Position of the ball along x-axis during initialization [m] (Finish mode)
@@ -164,7 +166,7 @@ protected:
   /// Position of the ball along y_axis during initialization [m] (Finish mode)
   double ball_y_init;
 
-  // Simple noise model (not even linear)
+  // SIMPLE NOISE MODEL (not even linear)
   // TODO: Ideally, noise model should be based on speed and acceleration (not supported by data)
 
   /// Noise on cartesian position for 1 second (independent on x and y) [cart]

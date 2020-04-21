@@ -102,6 +102,7 @@ SSLDynamicBallApproach::SSLDynamicBallApproach()
   mode(Mode::Finish)
   , ball_init_min_dist(collision_radius + 0.05)
   , ball_init_max_dist(ball_max_dist / 2)
+  , target_init_min_dist(0.0)
   , target_init_max_dist(target_max_dist / 2)
   ,
   // Noise model
@@ -265,8 +266,8 @@ Eigen::VectorXd SSLDynamicBallApproach::getWideStartingState(std::default_random
 {
   // Creating the distribution
   std::uniform_real_distribution<double> ball_dist_distrib(ball_init_min_dist, ball_init_max_dist),
-      target_dist_distrib(0, target_init_max_dist), ball_speed_distrib(0, max_ball_speed), angle_distrib(-M_PI, M_PI),
-      kick_dir_tol_distrib(min_kick_dir_tol, max_kick_dir_tol);
+      target_dist_distrib(target_init_min_dist, target_init_max_dist), ball_speed_distrib(0, max_ball_speed),
+      angle_distrib(-M_PI, M_PI), kick_dir_tol_distrib(min_kick_dir_tol, max_kick_dir_tol);
   // Generating random values
   double ball_dist = ball_dist_distrib(*engine);
   double ball_theta = angle_distrib(*engine);
@@ -289,7 +290,7 @@ Eigen::VectorXd SSLDynamicBallApproach::getFinishStartingState(std::default_rand
 {
   // Creating the distribution
   std::uniform_real_distribution<double> ball_x_distrib(finish_x_limits(0), finish_x_limits(1)),
-      ball_y_distrib(-finish_y_tol, finish_y_tol), target_dist_distrib(0, target_init_max_dist),
+      ball_y_distrib(-finish_y_tol, finish_y_tol), target_dist_distrib(target_init_min_dist, target_init_max_dist),
       robot_speed_offset_x_distrib(finish_diff_speed_x_limits(0), finish_diff_speed_x_limits(1)),
       robot_speed_offset_y_distrib(-finish_diff_speed_y_max, finish_diff_speed_y_max),
       robot_speed_theta_distrib(-finish_speed_theta_max, finish_speed_theta_max), ball_speed_distrib(0, max_ball_speed),
@@ -432,6 +433,7 @@ void SSLDynamicBallApproach::fromJson(const Json::Value& v, const std::string& d
   rhoban_utils::tryRead(v, "dt", &dt);
   rhoban_utils::tryRead(v, "ball_init_min_dist", &ball_init_min_dist);
   rhoban_utils::tryRead(v, "ball_init_max_dist", &ball_init_max_dist);
+  rhoban_utils::tryRead(v, "target_init_min_dist", &target_init_min_dist);
   rhoban_utils::tryRead(v, "target_init_max_dist", &target_init_max_dist);
   rhoban_utils::tryRead(v, "cart_stddev", &cart_stddev);
   rhoban_utils::tryRead(v, "angular_stddev", &angular_stddev_deg);
