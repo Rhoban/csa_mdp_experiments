@@ -111,9 +111,14 @@ SSLDynamicBallApproach::SSLDynamicBallApproach()
   updateLimits();
 }
 
+std::vector<int> SSLDynamicBallApproach::getLearningDimensions() const
+{
+  return { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+}
+
 void SSLDynamicBallApproach::updateLimits()
 {
-  Eigen::MatrixXd state_limits(10, 2), action_limits(3, 2);
+  Eigen::MatrixXd state_limits(11, 2), action_limits(3, 2);
   state_limits <<
       // Ball Position
       -ball_max_dist,
@@ -126,14 +131,16 @@ void SSLDynamicBallApproach::updateLimits()
       // Ball speed
       -max_ball_speed, max_ball_speed, -max_ball_speed, max_ball_speed,
       // Kick tolerance
-      min_kick_dir_tol, max_kick_dir_tol;
+      min_kick_dir_tol, max_kick_dir_tol,
+      // Robot orientation
+      -M_PI, M_PI;
   action_limits << -max_acc, max_acc, -max_acc, max_acc, -max_acc_theta, max_acc_theta;
   setStateLimits(state_limits);
   setActionLimits({ action_limits });
 
   // Also ensure names are valid
   setStateNames({ "ball_x", "ball_y", "target_x", "target_y", "v_x", "v_y", "v_theta", "ball_speed_x", "ball_speed_y",
-                  "kick_dir_tol" });
+                  "kick_dir_tol", "robot_dir" });
   setActionsNames({ { "acc_x", "acc_y", "acc_theta" } });
 }
 
@@ -204,7 +211,7 @@ Problem::Result SSLDynamicBallApproach::getSuccessor(const Eigen::VectorXd& stat
   double theta_diff = robot_avg_speed_in_rt(2) * dt + noise_theta;
   robot_avg_speed_in_rt(2) = 0;  // Transforming avg_speed_in_rt to homogeneous coordinates
   Eigen::Vector3d next_pos_in_rt = Eigen::Vector3d(noise_x, noise_y, 1) + robot_avg_speed_in_rt * dt;
-  Eigen::Matrix<double, 3, 3> rdt_from_rt = getR2FromR1(next_pos_in_rt.segment(0, 2), theta_diff);
+  Eigen::Matrix<double, 3, 3> rdt_from_rt = getR2FromR1(next_pos_in_rt.segment(0, 2), -theta_diff);
   // ROLLING BALL
   Eigen::Vector4d ball_state;
   ball_state.segment(0, 2) = state.segment(0, 2);
@@ -226,13 +233,14 @@ Problem::Result SSLDynamicBallApproach::getSuccessor(const Eigen::VectorXd& stat
   robot_next_speed_in_rdt = rdt_from_rt * robot_next_speed_in_rt;
   ball_speed_in_rdt = rdt_from_rt * ball_speed_in_rt;
   // Filling up successor
-  Eigen::VectorXd successor(10);
+  Eigen::VectorXd successor(11);
   successor.segment(0, 2) = ball_in_rdt.segment(0, 2);
   successor.segment(2, 2) = target_in_rdt.segment(0, 2);
   successor.segment(4, 2) = robot_next_speed_in_rdt.segment(0, 2);
   successor(6) = next_theta_speed;
   successor.segment(7, 2) = ball_speed_in_rdt.segment(0, 2);
   successor(9) = state(9);  // kick_dir_tol is fixed for each trial
+  successor(10) = state(10) + theta_diff;
   // Filling up result
   Problem::Result result;
   result.successor = successor;
@@ -268,11 +276,12 @@ Eigen::VectorXd SSLDynamicBallApproach::getWideStartingState(std::default_random
   double ball_speed_theta = angle_distrib(*engine);
   double kick_dir_tol = kick_dir_tol_distrib(*engine);
   // Updating state
-  Eigen::VectorXd state = Eigen::VectorXd::Zero(10);
+  Eigen::VectorXd state = Eigen::VectorXd::Zero(11);
   state.segment(0, 2) = pointFromPolar(ball_dist, ball_theta);
   state.segment(2, 2) = pointFromPolar(target_dist, target_theta);
   state.segment(7, 2) = pointFromPolar(ball_speed, ball_speed_theta);
   state(9) = kick_dir_tol;
+  state(10) = 0;
   return state;
 }
 
@@ -302,13 +311,14 @@ Eigen::VectorXd SSLDynamicBallApproach::getFinishStartingState(std::default_rand
   Eigen::Vector2d ball_speed = pointFromPolar(ball_speed_norm, ball_speed_theta);
   Eigen::Vector2d robot_speed = ball_speed + Eigen::Vector2d(robot_speed_dx, robot_speed_dy);
   // Updating state
-  Eigen::VectorXd state = Eigen::VectorXd::Zero(10);
+  Eigen::VectorXd state = Eigen::VectorXd::Zero(11);
   state.segment(0, 2) = Eigen::Vector2d(ball_x, ball_y);
   state.segment(2, 2) = pointFromPolar(target_dist, target_dir);
   state.segment(4, 2) = robot_speed;
   state(6) = robot_speed_theta;
   state.segment(7, 2) = ball_speed;
   state(9) = kick_dir_tol;
+  state(10) = 0;
   return state;
 }
 

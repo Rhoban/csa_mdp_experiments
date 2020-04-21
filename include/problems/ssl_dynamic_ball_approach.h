@@ -17,10 +17,11 @@ namespace csa_mdp
 ///
 /// The state space is the following (all data are provided in robot referential):
 /// - state[0:1] -> position of the ball (x,y)
-/// - state[2:3] -> position of the target (x,y)
+/// - state[2:3] -> position of the target (x,y) (location where the robot aims)
 /// - state[4:6] -> speed of the robot (x,y,theta)
 /// - state[7:8] -> speed of the ball (x,y)
 /// - state[9]   -> Kicking tolerance (do not change at each step)
+/// - state[10]  -> Orientation of the robot (debug purpose only)
 ///
 /// There are two different setups for the problem: see Mode
 /// - Wide: The ball starts at a random orientation with a random speed and
@@ -38,6 +39,8 @@ public:
   };
 
   SSLDynamicBallApproach();
+
+  std::vector<int> getLearningDimensions() const override;
 
   bool isTerminal(const Eigen::VectorXd& state) const;
 
