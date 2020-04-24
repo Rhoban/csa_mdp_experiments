@@ -79,3 +79,18 @@ target_link_libraries(blackbox_value_estimator ${catkin_LIBRARIES} csa_mdp_exper
 
 add_executable(robot_kick_comparator src/robot_kick_comparator.cpp)
 target_link_libraries(robot_kick_comparator ${catkin_LIBRARIES} csa_mdp_experiments)
+
+enable_testing()
+
+set(TESTS
+  problems/ssl_dynamic_ball_approach
+  )
+
+if (CATKIN_ENABLE_TESTING)
+  # create an executable for each test
+  foreach(test ${TESTS})
+    string(REPLACE "/" "_" id ${test})
+    catkin_add_gtest(${id} tests/${test}.cpp)
+    target_link_libraries(${id} ${catkin_LIBRARIES} csa_mdp_experiments)
+  endforeach(test)
+endif()

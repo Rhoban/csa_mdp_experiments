@@ -1,6 +1,8 @@
 source("../../plot_tools.r")
 
 # Drawing parameters
+
+# TODO: unit should be specified in [m]
 ballSize <- 1.2 # point size -> unit relative to graph size
 targetSize <- 5 # point size -> unit relative to graph size
 
@@ -43,23 +45,44 @@ mkDirOkZone <- function(tolerance, x_max) {
     return(data.frame(x = xx, y = yy))
 }
 
+# Create the triangle going 
+# dir_length: the length of the target vector
+mkDirOkZoneTarget <- function(kick_tol, robot_x, robot_y, robot_dir, dir_length = 100) {
+    nominal_x <- cos(robot_dir) * dir_length
+    nominal_y <- sin(robot_dir) * dir_length
+    offset_length <- dir_length * tan(kick_tol)
+    offset_x <- cos(robot_dir + pi/2) * offset_length
+    offset_y <- sin(robot_dir + pi/2) * offset_length
+    xx <- c(0,nominal_x + offset_x,nominal_x - offset_x) + robot_x
+    yy <- c(0,nominal_y + offset_y,nominal_y - offset_y) + robot_y
+    return(data.frame(x = xx, y = yy))
+}
+
 # Plot the trajectory of the robot in target referential
 vectorPlotTarget <- function(data, variables, outputPath)
 {
-    dt <- 0.05
+    dt <- 0.1
     robot_arrow_length <- 0.05
     c_dir <- cos(data$robot_dir)
     s_dir <- sin(data$robot_dir)
     vecData <- data.frame(
         "robot_dir" = data$robot_dir,
-        "robot_x" = -c_dir * data$target_x - s_dir * data$target_y,
-        "robot_y" = s_dir * data$target_x - c_dir * data$target_y,
-        "time" = data$step * dt)
+        "robot_x" = -c_dir * data$target_x + s_dir * data$target_y,
+        "robot_y" = -s_dir * data$target_x - c_dir * data$target_y,
+        "time" = data$step * dt,
+        "kick_dir_tol" = data$kick_dir_tol)
     vecData$robot_end_x <- vecData$robot_x + c_dir * robot_arrow_length
     vecData$robot_end_y <- vecData$robot_y + s_dir * robot_arrow_length
-    vecData$ball_x <- vecData$robot_x + c_dir * data$ball_x + s_dir * data$ball_y
-    vecData$ball_y <- vecData$robot_y - s_dir * data$ball_x + c_dir * data$ball_y
+    vecData$ball_x <- vecData$robot_x + c_dir * data$ball_x - s_dir * data$ball_y
+    vecData$ball_y <- vecData$robot_y + s_dir * data$ball_x + c_dir * data$ball_y
+
+    # Last entry is used to draw finalStatus
+    lastEntry <- tail(vecData,1)
+
+    # Centring everything in position of last ball
+    # TODO
         
+    dirOkColor      <- cbbPalette[2]
     stepMinColor   <- cbbPalette[4]
     stepMaxColor   <- cbbPalette[5]
     # plotting
@@ -73,6 +96,11 @@ vectorPlotTarget <- function(data, variables, outputPath)
                           )
     g <- g + geom_point(aes(x=ball_x,y=ball_y,
                             color = time))
+    # Adding direction
+    dirOkZone <- mkDirOkZoneTarget(lastEntry$kick_dir_tol, lastEntry$robot_x, lastEntry$robot_y,
+                                   lastEntry$robot_dir)
+    g <- g + geom_polygon(aes(x=x,y=y), dirOkZone, size = 0,
+                          fill= dirOkColor, alpha=0.5)
     # Setting axis
     g <- g + scale_x_continuous(name = "x [m]",
                                 breaks = variables[[x_var]][["breaks"]],
@@ -178,7 +206,7 @@ vectorPlotLasts <- function(path, variables, nbRuns = 10)
 
 dt <- 0.1
 
-spaceSize <- 2.0 
+spaceSize <- 3.0
 
 variables <- list(x      = list(limits = c(-spaceSize, spaceSize)),
                   y      = list(limits = c(-spaceSize, spaceSize)))

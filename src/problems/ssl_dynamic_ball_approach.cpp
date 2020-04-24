@@ -179,7 +179,7 @@ double SSLDynamicBallApproach::getReward(const Eigen::VectorXd& state, const Eig
 Problem::Result SSLDynamicBallApproach::getSuccessor(const Eigen::VectorXd& state, const Eigen::VectorXd& action,
                                                      std::default_random_engine* engine) const
 {
-  // Now, actions need to be (0 acc_x acc_y acc_theta)
+  // Actions need to be (0 acc_x acc_y acc_theta)
   if (action.rows() != 4)
   {
     std::ostringstream oss;
@@ -212,7 +212,7 @@ Problem::Result SSLDynamicBallApproach::getSuccessor(const Eigen::VectorXd& stat
   double theta_diff = robot_avg_speed_in_rt(2) * dt + noise_theta;
   robot_avg_speed_in_rt(2) = 0;  // Transforming avg_speed_in_rt to homogeneous coordinates
   Eigen::Vector3d next_pos_in_rt = Eigen::Vector3d(noise_x, noise_y, 1) + robot_avg_speed_in_rt * dt;
-  Eigen::Matrix<double, 3, 3> rdt_from_rt = getR2FromR1(next_pos_in_rt.segment(0, 2), -theta_diff);
+  Eigen::Matrix<double, 3, 3> rdt_from_rt = getR2FromR1(next_pos_in_rt.segment(0, 2), theta_diff);
   // ROLLING BALL
   Eigen::Vector4d ball_state;
   ball_state.segment(0, 2) = state.segment(0, 2);
