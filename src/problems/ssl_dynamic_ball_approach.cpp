@@ -55,58 +55,35 @@ SSLDynamicBallApproach::SSLDynamicBallApproach()
   :  // State limits
   ball_max_dist(1.0)
   , target_max_dist(2.0)
-  , max_robot_speed(0.8)
-  ,  // Working well: 0.8 [m/s]
-  max_robot_speed_theta(1.5)
-  ,  // Working well: 1.5 [rad/s]
-  max_ball_speed(0.4)
-  ,  // Theory: 8 [m/s]
-  min_kick_dir_tol(rhoban_utils::deg2rad(5))
+  , max_robot_speed(0.8)        // Working well: 0.8 [m/s]
+  , max_robot_speed_theta(1.5)  // Working well: 1.5 [rad/s]
+  , max_ball_speed(0.4)         // Theory: 8 [m/s]
+  , min_kick_dir_tol(rhoban_utils::deg2rad(5))
   , max_kick_dir_tol(rhoban_utils::deg2rad(20))
-  ,
-  // Acceleration limits (Much higher could be possible)
-  max_acc(max_robot_speed / 2)
-  ,  // 2 s to reach full speed
-  max_acc_theta(max_robot_speed_theta / 2)
-  ,  // 2 s to reach full speed
-  // Finish
-  finish_x_limits(0.11, 0.2)
+  , max_acc(max_robot_speed / 2)              //  2 s to reach full speed
+  , max_acc_theta(max_robot_speed_theta / 2)  // 2 s to reach full speed
+  , finish_x_limits(0.09, 0.4)
   , finish_y_tol(0.08)
-  , finish_diff_speed_x_limits(-0.05, 0.2)
-  ,  // No real idea
-  finish_diff_speed_y_max(0.1)
-  ,  // Ideally less
-  finish_speed_theta_max(rhoban_utils::deg2rad(20))
-  ,
-  // Kick
-  kick_x_limits(0.09, 0.12)
-  , kick_y_tol(0.02)
-  ,  // Kicker width ~0.08
-  kick_diff_speed_x_limits(0.0, 0.05)
-  ,  // No real idea
-  kick_diff_speed_y_max(0.025)
-  ,  // Ideally less
-  kick_speed_theta_max(rhoban_utils::deg2rad(5))
-  ,
-  // Collision
-  collision_radius(0.12)
-  ,  // measured
-  collision_forward(0.09)
-  ,  // measured
-  collision_reward(-200)
-  ,
-  // Misc
-  out_of_space_reward(-200)
-  , dt(0.033)
-  ,  // Around 30 Hz
-  mode(Mode::Finish)
+  , finish_diff_speed_x_limits(-0.05, 0.2)  // No real idea
+  , finish_diff_speed_y_max(0.1)            // Ideally less
+  , finish_speed_theta_max(rhoban_utils::deg2rad(20))
+  , finish_init_min_dist(0.3)
+  , kick_x_limits(0.09, 0.12)
+  , kick_y_tol(0.02)                     // Kicker width ~0.08
+  , kick_diff_speed_x_limits(0.0, 0.05)  // No real idea
+  , kick_diff_speed_y_max(0.025)         // Ideally less
+  , kick_speed_theta_max(rhoban_utils::deg2rad(5))
+  , collision_radius(0.12)   // measured
+  , collision_forward(0.09)  // measured
+  , collision_reward(-200)
+  , out_of_space_reward(-200)
+  , dt(0.033)  // Around 30 Hz
+  , mode(Mode::Finish)
   , ball_init_min_dist(collision_radius + 0.05)
   , ball_init_max_dist(ball_max_dist / 2)
   , target_init_min_dist(0.0)
   , target_init_max_dist(target_max_dist / 2)
-  ,
-  // Noise model
-  cart_stddev(0.02)
+  , cart_stddev(0.02)
   , angular_stddev(rhoban_utils::deg2rad(2))
 {
   updateLimits();
@@ -255,6 +232,7 @@ Eigen::VectorXd SSLDynamicBallApproach::getStartingState(std::default_random_eng
   switch (mode)
   {
     case Mode::Wide:
+    case Mode::Full:
       return getWideStartingState(engine);
     case Mode::Finish:
       return getFinishStartingState(engine);
@@ -289,7 +267,7 @@ Eigen::VectorXd SSLDynamicBallApproach::getWideStartingState(std::default_random
 Eigen::VectorXd SSLDynamicBallApproach::getFinishStartingState(std::default_random_engine* engine) const
 {
   // Creating the distribution
-  std::uniform_real_distribution<double> ball_x_distrib(finish_x_limits(0), finish_x_limits(1)),
+  std::uniform_real_distribution<double> ball_x_distrib(finish_init_min_dist, finish_x_limits(1)),
       ball_y_distrib(-finish_y_tol, finish_y_tol), target_dist_distrib(target_init_min_dist, target_init_max_dist),
       robot_speed_offset_x_distrib(finish_diff_speed_x_limits(0), finish_diff_speed_x_limits(1)),
       robot_speed_offset_y_distrib(-finish_diff_speed_y_max, finish_diff_speed_y_max),
@@ -325,7 +303,16 @@ Eigen::VectorXd SSLDynamicBallApproach::getFinishStartingState(std::default_rand
 
 bool SSLDynamicBallApproach::isSuccess(const Eigen::VectorXd& state) const
 {
-  return (mode == Mode::Finish && isKickable(state)) || (mode == Mode::Wide && isFinishState(state));
+  switch (mode)
+  {
+    case Mode::Finish:
+    case Mode::Full:
+      std::cout << "Kickable state reached: " << state.transpose() << std::endl;
+      return isKickable(state);
+    case Mode::Wide:
+      return isFinishState(state);
+  }
+  throw std::logic_error("Unknown mode");
 }
 
 bool SSLDynamicBallApproach::isFinishState(const Eigen::VectorXd& state) const
@@ -392,6 +379,8 @@ static SSLDynamicBallApproach::Mode str2Mode(const std::string& str)
     return SSLDynamicBallApproach::Mode::Finish;
   if (str == "Wide")
     return SSLDynamicBallApproach::Mode::Wide;
+  if (str == "Full")
+    return SSLDynamicBallApproach::Mode::Full;
   throw std::logic_error("SSLDynamicBallApproach: str2Mode: unknown mode: '" + str + "'");
 }
 
@@ -423,6 +412,7 @@ void SSLDynamicBallApproach::fromJson(const Json::Value& v, const std::string& d
   rhoban_utils::tryRead(v, "finish_y_tol", &finish_y_tol);
   rhoban_utils::tryRead(v, "finish_diff_speed_y_max", &finish_diff_speed_y_max);
   rhoban_utils::tryRead(v, "finish_speed_theta_max", &finish_speed_theta_max_deg);
+  rhoban_utils::tryRead(v, "finish_init_min_dist", &finish_init_min_dist);
   rhoban_utils::tryRead(v, "kick_y_tol", &kick_y_tol);
   rhoban_utils::tryRead(v, "kick_diff_speed_y_max", &kick_diff_speed_y_max);
   rhoban_utils::tryRead(v, "kick_speed_theta_max", &kick_speed_theta_max_deg);

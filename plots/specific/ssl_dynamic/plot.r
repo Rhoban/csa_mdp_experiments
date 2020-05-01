@@ -122,7 +122,7 @@ vectorPlotTarget <- function(data, variables, outputPath, config)
     if (config$mode == "Wide") {
         okZone <- robotFromWorld(mkFinishArea(config),
                                  lastEntry$robot_x, lastEntry$robot_y, lastEntry$robot_dir)
-    } else if (config$mode == "Finish") {
+    } else if (config$mode %in% c("Finish","Full")) {
         okZone <- robotFromWorld(mkKickArea(config),
                                  lastEntry$robot_x, lastEntry$robot_y, lastEntry$robot_dir)
     }
