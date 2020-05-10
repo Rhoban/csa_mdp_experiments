@@ -1,6 +1,7 @@
 #include "problems/ssl_dynamic_ball_approach.h"
 
-#include "rhoban_utils/angle.h"
+#include <rhoban_utils/angle.h>
+#include <rhoban_fa/function_approximator_factory.h>
 
 #include <cmath>
 #include <iostream>
@@ -140,6 +141,8 @@ double SSLDynamicBallApproach::getReward(const Eigen::VectorXd& state, const Eig
   (void)action;
   if (isSuccess(dst))
   {
+    if (mode == Mode::Wide && finish_value)
+      return finish_value->predict(getLearningState(state))(0);
     return 0;
   }
   if (isColliding(dst))
@@ -439,7 +442,9 @@ void SSLDynamicBallApproach::fromJson(const Json::Value& v, const std::string& d
   angular_stddev = rhoban_utils::deg2rad(angular_stddev_deg);
   min_kick_dir_tol = rhoban_utils::deg2rad(min_kick_dir_tol_deg);
   max_kick_dir_tol = rhoban_utils::deg2rad(max_kick_dir_tol_deg);
-
+  // If applicable load the finish value
+  if (v.isMember("finish_value"))
+    rhoban_fa::FunctionApproximatorFactory().tryLoadBinaryFromPath(v["finish_value"], dir_name, &finish_value);
   // Update limits according to the new parameters
   updateLimits();
 }

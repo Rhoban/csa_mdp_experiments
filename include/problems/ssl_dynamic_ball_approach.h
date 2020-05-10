@@ -181,6 +181,9 @@ protected:
 
   /// The model used for ball speed evolution
   RollingBallModel rolling_ball_model;
+
+  /// The value function used to obtain the final reward when state is in 'finish_zone' and mode is 'Wide'
+  std::unique_ptr<rhoban_fa::FunctionApproximator> finish_value;
 };
 
 }  // namespace csa_mdp
