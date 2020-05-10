@@ -307,7 +307,6 @@ bool SSLDynamicBallApproach::isSuccess(const Eigen::VectorXd& state) const
   {
     case Mode::Finish:
     case Mode::Full:
-      std::cout << "Kickable state reached: " << state.transpose() << std::endl;
       return isKickable(state);
     case Mode::Wide:
       return isFinishState(state);
