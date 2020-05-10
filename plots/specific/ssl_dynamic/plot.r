@@ -1,4 +1,5 @@
 source("../../plot_tools.r")
+library(dplyr)
 library(optparse)
 library(rjson)
 
@@ -169,29 +170,41 @@ vectorPlotTarget <- function(data, variables, outputPath, config)
     ggsave(file = outputPath, g,width=5,height=5)
 }
 
-vectorPlotLasts <- function(path, variables, nbRuns = 10, config)
+vectorPlotRuns <- function(path, variables, options, problem_config)
 {
     data <- read.csv(path)
     base <- getBase(path)
     rewards <- aggregate(reward~run, data, sum)
-    nbRuns <- min(nrow(rewards),nbRuns)
-    lastRunsIdx <- seq(max(data$run) - nbRuns + 1, max(data$run))
+    nb_runs <- nrow(rewards)
+    if (options$nb_runs > 0) {
+        nb_runs <- min(options$nb_runs,nb_runs)
+    }
+    if (options$order) {
+        rewards <- arrange(rewards, desc(reward))
+    }
+    lastRunsIdx <- rewards$run#[(nrow(rewards)-nb_runs+1):nrow(rewards)]
     lastRuns <- rewards[lastRunsIdx,]$run
-    print(rewards[lastRunsIdx,])
-    for (rank in seq(1,length(lastRuns)))
-    {
-        run <- lastRuns[rank]
-        filteredData <- data[which(data$run == run),]
-        dst <- sprintf("%slast_vector_plot_%d_run_%d.png", base, rank, run)
-        vectorPlotTarget(filteredData, variables, dst, config)
+    print(rewards)
+    if (!options$no_plot) {
+        for (rank in seq(1,length(lastRuns)))
+        {
+            run <- lastRuns[rank]
+            filteredData <- data[which(data$run == run),]
+            dst <- sprintf("%slast_vector_plot_%d_run_%d.png", base, rank, run)
+            vectorPlotTarget(filteredData, variables, dst, problem_config)
+        }
     }
 }
 
 option_list <- list(
-    make_option(c("-n","--nb_runs"), type="integer", default=1,
-                help="Number of runs to plot"),
+    make_option(c("-n","--nb_runs"), type="integer", default=0,
+                help="Number of runs to plot, 0 means all runs are plotted"),
     make_option(c("-s","--space_size"), type="double", default=1.0,
-                help="Size of the space to show on graphs")
+                help="Size of the space to show on graphs"),
+    make_option(c("-o","--order"), action="store_true", default = FALSE,
+                help="Order values of rewards from best to worse"),
+    make_option("--no_plot", action="store_true", default = FALSE,
+                help="Order values of rewards from best to worse")
     )
 parser <- OptionParser(usage="%prog [options] <run_logs.csv> <problem.json>",
                        option_list = option_list)
@@ -226,6 +239,6 @@ for (v in names(variables))
 
 
 
-vectorPlotLasts(cmd$args[1], variables, cmd$options$nb_runs, problem$content)
+vectorPlotRuns(cmd$args[1], variables, cmd$options, problem$content)
 
 warnings()
