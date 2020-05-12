@@ -1,5 +1,6 @@
 source("../../plot_tools.r")
 library(dplyr)
+library(gganimate)
 library(optparse)
 library(rjson)
 
@@ -9,14 +10,20 @@ library(rjson)
 # - Print one out of 'n' entries
 
 # Drawing parameters
-# TODO: unit should be specified in [m]
-ballSize <- 0.3 # point size -> unit relative to graph size
+ball_radius <- 0.02 # [m] (Note: this should become a parameter of the problem
 targetSize <- 5 # point size -> unit relative to graph size
 
 # Convert a data frame with coordinate in world basis to robot basis
 robotFromWorld <- function(data, robot_x, robot_y, robot_dir) {
     data.frame(x = robot_x + data$x * cos(robot_dir) - data$y * sin(robot_dir),
                y = robot_y + data$x * sin(robot_dir) + data$y * cos(robot_dir))
+}
+
+mkBall <- function(config, ball_x, ball_y, npoints=100){
+    tt <- seq(0,2*pi,length.out = npoints)
+    xx <- ball_radius* cos(tt) + ball_x
+    yy <- ball_radius* sin(tt) + ball_y
+    return(data.frame(x = xx, y = yy))
 }
 
 mkRobot <- function(config, npoints=100){
@@ -27,8 +34,31 @@ mkRobot <- function(config, npoints=100){
     return(data.frame(x = xx, y = yy))
 }
 
-mkRobotWithPose <- function(config, robotX, robotY, robotDir, npoints=100){
-    robotFromWorld(mkRobot(config, npoints), robotX, robotY, robotDir)
+mkHistory <- function(data, config, options, FUN) {
+    mkHistoryGeneric(data, config, options,
+                     function(entry, config){
+                         robotFromWorld(FUN(config), entry$robot_x, entry$robot_y, entry$robot_dir)
+                     })
+}
+
+mkHistoryGeneric <- function(data, config, options, FUN) {
+    data_out<- NULL
+    # If gif mode is enabled, then uses all steps, otherwise, use only last
+    steps <- max(data$step)
+    if (options$gif) {
+        steps <- unique(data$step)
+    }
+    for (step in steps) {
+        entry <- data[which(data$step == step),]
+        stepData <- FUN(entry, config)
+        stepData$step <- step
+        if (is.null(data_out)) {
+            data_out <- stepData
+        } else {
+            data_out <- rbind(data_out, stepData)
+        }
+    }
+    data_out
 }
 
 mkRect <- function(center = c(0,0),dx = 1, dy = 1)
@@ -68,7 +98,7 @@ mkDirOkZoneTarget <- function(kick_tol, robot_x, robot_y, robot_dir, dir_length 
 }
 
 # Plot the trajectory of the robot in target referential
-vectorPlotTarget <- function(data, variables, outputPath, config)
+vectorPlotTarget <- function(data, variables, outputPath, options, config)
 {
     # Properties
     collisionRadius <- config$collision_radius # in [m]
@@ -84,6 +114,7 @@ vectorPlotTarget <- function(data, variables, outputPath, config)
         "target_y" = 0,
         "robot_x" = -c_dir * data$target_x + s_dir * data$target_y,
         "robot_y" = -s_dir * data$target_x - c_dir * data$target_y,
+        "step" = data$step,
         "time" = data$step * dt,
         "kick_dir_tol" = data$kick_dir_tol)
     vecData$robot_end_x <- vecData$robot_x + c_dir * robot_arrow_length
@@ -114,45 +145,59 @@ vectorPlotTarget <- function(data, variables, outputPath, config)
     kickColor      <- cbbPalette[3]
     stepMinColor   <- cbbPalette[4]
     stepMaxColor   <- cbbPalette[5]
+    ballColor      <- cbbPalette[6]
     # plotting
     x_var <- "x"
     y_var <- "y"
     g <- ggplot(vecData)
+    # Showing direction
+    dirOkZone <- mkHistoryGeneric(vecData, config, options,
+                                  function(entry, config) {
+                                      mkDirOkZoneTarget(entry$kick_dir_tol, entry$robot_x,
+                                                        entry$robot_y, entry$robot_dir)
+                                  })
+    g <- g + geom_polygon(aes(x=x,y=y), dirOkZone, size = 0,
+                          fill= dirOkColor, alpha=0.5)
+    # Plot robot
+    collisionData <- mkHistory(vecData, config, options, mkRobot)
+    g <- g + geom_polygon(aes(x=x,y=y), collisionData , size = 0,
+                          fill= collisionColor, alpha=1)
     # Adding kick area
     okZone <- NULL
     if (config$mode == "Wide") {
-        okZone <- robotFromWorld(mkFinishArea(config),
-                                 lastEntry$robot_x, lastEntry$robot_y, lastEntry$robot_dir)
+        okZone <- mkHistory(vecData, config, options, mkFinishArea)
     } else if (config$mode %in% c("Finish","Full")) {
-        okZone <- robotFromWorld(mkKickArea(config),
-                                 lastEntry$robot_x, lastEntry$robot_y, lastEntry$robot_dir)
+        okZone <- mkHistory(vecData, config, options, mkKickArea)
     }
     g <- g + geom_polygon(aes(x=x,y=y), okZone, size = 0,
                           fill= kickColor, alpha=0.5)
-    # Adding direction
-    dirOkZone <- mkDirOkZoneTarget(lastEntry$kick_dir_tol, lastEntry$robot_x, lastEntry$robot_y,
-                                   lastEntry$robot_dir)
-    g <- g + geom_polygon(aes(x=x,y=y), dirOkZone, size = 0,
-                          fill= dirOkColor, alpha=0.5)
-    # Plot final robot
-    collisionData <- mkRobotWithPose(config, lastEntry$robot_x, lastEntry$robot_y, lastEntry$robot_dir)
-    g <- g + geom_polygon(aes(x=x,y=y), collisionData , size = 0,
-                          fill= collisionColor, alpha=1)
     # plot target
     g <- g + geom_point(aes(x= target_x, y=target_y),
                         shape="x",
                         vecData, size = targetSize)
-    toTargetData <- data.frame(x=c(lastEntry$robot_x, lastEntry$target_x),
-                               y= c(lastEntry$robot_y, lastEntry$target_y))
+    toTargetData <- mkHistoryGeneric(vecData, config, options,
+                                     function(entry, config) {
+                                         data.frame(x=c(entry$robot_x, entry$target_x),
+                                                    y=c(entry$robot_y, entry$target_y))
+                                     })
     g <- g + geom_path(aes(x=x,y=y), toTargetData)
     # plot robot 
-    g <- g + geom_segment(aes(x=robot_x,y=robot_y, xend = robot_end_x, yend = robot_end_y,
-                              color = time),
-                          arrow = arrow(length = unit(0.05,"cm"))
-                          )
+    if (!options$gif) {
+        g <- g + geom_segment(aes(x=robot_x,y=robot_y, xend = robot_end_x, yend = robot_end_y,
+                                  color = time),
+                              arrow = arrow(length = unit(0.05,"cm"))
+                              )
+    }
     # plot ball
-    g <- g + geom_point(aes(x=ball_x,y=ball_y,
-                            color = time), size = ballSize)
+    ballData <- mkHistoryGeneric(vecData, config, options,
+                                 function(entry, config) { mkBall(config, entry$ball_x, entry$ball_y) }
+                                 )
+    g <- g + geom_polygon(aes(x=x,y=y), ballData, size = 0,
+                          fill= ballColor)
+    if (!options$gif) {
+        g <- g + geom_line(aes(x=ball_x,y=ball_y,
+                                color = time))
+    }
     # Setting axis
     g <- g + scale_x_continuous(name = "x [m]",
                                 breaks = variables[[x_var]][["breaks"]],
@@ -167,7 +212,13 @@ vectorPlotTarget <- function(data, variables, outputPath, config)
 
     # Set theme
     g <- g + theme_bw()
-    ggsave(file = outputPath, g,width=5,height=5)
+    # Mode
+    if (options$gif) {
+        g <- g + transition_manual(step)
+        anim_save(file = outputPath, g, width = 600, height = 600, fps = 10)
+    } else { 
+        ggsave(file = outputPath, g,width=5,height=5)
+    }
 }
 
 vectorPlotRuns <- function(path, variables, options, problem_config)
@@ -182,16 +233,16 @@ vectorPlotRuns <- function(path, variables, options, problem_config)
     if (options$order) {
         rewards <- arrange(rewards, desc(reward))
     }
-    lastRunsIdx <- rewards$run#[(nrow(rewards)-nb_runs+1):nrow(rewards)]
-    lastRuns <- rewards[lastRunsIdx,]$run
+    lastRunsIdx <- rewards$run
     print(rewards)
     if (!options$no_plot) {
-        for (rank in seq(1,length(lastRuns)))
+        for (i in seq(1,nb_runs))
         {
-            run <- lastRuns[rank]
+            run <- rewards$run[i] 
             filteredData <- data[which(data$run == run),]
-            dst <- sprintf("%slast_vector_plot_%d_run_%d.png", base, rank, run)
-            vectorPlotTarget(filteredData, variables, dst, problem_config)
+            extension <- ifelse(options$gif, "gif","png")
+            dst <- sprintf("%slast_vector_plot_%d_run_%d.%s", base, i, run, extension)
+            vectorPlotTarget(filteredData, variables, dst, options, problem_config)
         }
     }
 }
@@ -204,7 +255,9 @@ option_list <- list(
     make_option(c("-o","--order"), action="store_true", default = FALSE,
                 help="Order values of rewards from best to worse"),
     make_option("--no_plot", action="store_true", default = FALSE,
-                help="Order values of rewards from best to worse")
+                help="Order values of rewards from best to worse"),
+    make_option("--gif", action="store_true", default = FALSE,
+                help="Produces animation instead of static figures")
     )
 parser <- OptionParser(usage="%prog [options] <run_logs.csv> <problem.json>",
                        option_list = option_list)
