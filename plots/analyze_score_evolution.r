@@ -18,5 +18,5 @@ g <- g + geom_line(size=0.1)
 g <- g + geom_point(size=0.5)
 # Not displaying confidence interval because the different points are not
 # independent at all.
-g <- g + geom_smooth(aes(group=category), se = FALSE)
+## g <- g + geom_smooth(aes(group=category), se = FALSE)
 ggsave(paste(args[1], "score_evolution.png", sep="/"),width=8,height=6)

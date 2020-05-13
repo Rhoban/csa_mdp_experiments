@@ -23,19 +23,21 @@ namespace csa_mdp
 /// - state[9]   -> Kicking tolerance (do not change at each step)
 /// - state[10]  -> Orientation of the robot (debug purpose only)
 ///
-/// There are two different setups for the problem: see Mode
+/// There are three different setups for the problem: see Mode
 /// - Wide: The ball starts at a random orientation with a random speed and
 ///         robot is stationary
 /// - Finish: The robot start with the ball in front of him, roughly aligned
 ///           toward the goal target, robot is moving at a speed similar to
 ///           the ball speed
+/// - Full: The robot starts as in Wide and end as in Finish
 class SSLDynamicBallApproach : public BlackBoxProblem
 {
 public:
   enum Mode
   {
     Wide,
-    Finish
+    Finish,
+    Full
   };
 
   SSLDynamicBallApproach();
@@ -113,6 +115,8 @@ protected:
   /// Angular speed has to be in [-finish_speed_theta_max, finish_speed_theta_max]
   /// to enter 'finish' mode [rad/s]
   double finish_speed_theta_max;
+  /// The minimal distance for initial states in Finish Mode
+  double finish_init_min_dist;
 
   // KICK LIMITS
   // Limits on x-axis to perform a kick [m]
@@ -177,6 +181,9 @@ protected:
 
   /// The model used for ball speed evolution
   RollingBallModel rolling_ball_model;
+
+  /// The value function used to obtain the final reward when state is in 'finish_zone' and mode is 'Wide'
+  std::unique_ptr<rhoban_fa::FunctionApproximator> finish_value;
 };
 
 }  // namespace csa_mdp
