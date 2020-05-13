@@ -36,7 +36,7 @@ do
     mkdir $newFolder
     if [ $? -eq 0 ]
     then
-        echo "Creating folder '${newFolder}'"
+        echo "$(date +"%H:%M:%S") Creating folder '${newFolder}'"
     else
         echo "ERROR: failed to create folder '${newFolder}'"
         exit -1
@@ -50,3 +50,5 @@ do
     cd ..
     ((i++))
 done
+
+echo "$(date +"%H:%M:%S") Finished"
