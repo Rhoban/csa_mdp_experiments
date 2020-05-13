@@ -3,11 +3,12 @@
 # This script allows to run several black_box_learning in a row
 if [ $# -lt 2 ]
 then
-    echo "Usage: $0 <original_folder> <last_test> <optional:first_test(default=1)>"
+    echo "Usage: $0 <blackbox_learner.json> <last_test> <optional:first_test(default=1)>"
     exit -1
 fi
 
-folder=$1
+folder=$(dirname $1)
+fileName=$(basename $1)
 last_test=$2
 first_test=1
 if [ $# -gt 2 ]
@@ -41,11 +42,10 @@ do
         echo "ERROR: failed to create folder '${newFolder}'"
         exit -1
     fi
-    cp -r ${configFolder}/*.json ${newFolder}/
     # Jumping in the folder
     cd ${newFolder}
     # Running the experiment
-    ~/black_box_learning > bb.out 2> bb.err
+    black_box_learning ../$fileName > bb.out 2> bb.err
     # back to previous folder
     cd ..
     ((i++))
