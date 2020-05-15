@@ -627,6 +627,9 @@ gatherCategories <- function(categories)
         for (path in categories[[catName]])
         {
             pathData <- read.csv(path)
+            # Skip empty files
+            if (nrow(pathData) == 0)
+                next
             pathData$category <- catName
             pathData$path <- path
             if (is.null(data)) {
