@@ -239,6 +239,8 @@ Eigen::VectorXd SSLDynamicBallApproach::getStartingState(std::default_random_eng
       return getWideStartingState(engine);
     case Mode::Finish:
       return getFinishStartingState(engine);
+    case Mode::Task:
+      return getTaskStartingState(engine);
   }
   throw std::logic_error("SSLDynamicBallApproach::getStartingState: unknown mode");
 }
@@ -304,12 +306,32 @@ Eigen::VectorXd SSLDynamicBallApproach::getFinishStartingState(std::default_rand
   return state;
 }
 
+Eigen::VectorXd SSLDynamicBallApproach::getTaskStartingState(std::default_random_engine* engine) const
+{
+  Eigen::VectorXd state = getWideStartingState(engine);
+  // Scaling distance and direction to ball
+  double ball_dist = active_task(0) * state.segment(0, 2).norm();
+  double ball_dir = active_task(1) * atan2(state(1), state(0));
+  state(0) = ball_dist * cos(ball_dir);
+  state(1) = ball_dist * sin(ball_dir);
+  // Scaling direction of target
+  double target_dist = state.segment(2, 2).norm();
+  double target_dir = active_task(1) * atan2(state(4), state(3));
+  state(2) = target_dist * cos(target_dir);
+  state(3) = target_dist * sin(target_dir);
+  // Scaling speed of ball and robot
+  state.segment(4, 5) = active_task(2) * state.segment(4, 5);
+
+  return state;
+}
+
 bool SSLDynamicBallApproach::isSuccess(const Eigen::VectorXd& state) const
 {
   switch (mode)
   {
     case Mode::Finish:
     case Mode::Full:
+    case Mode::Task:
       return isKickable(state);
     case Mode::Wide:
       return isFinishState(state);
@@ -383,6 +405,8 @@ static SSLDynamicBallApproach::Mode str2Mode(const std::string& str)
     return SSLDynamicBallApproach::Mode::Wide;
   if (str == "Full")
     return SSLDynamicBallApproach::Mode::Full;
+  if (str == "Task")
+    return SSLDynamicBallApproach::Mode::Task;
   throw std::logic_error("SSLDynamicBallApproach: str2Mode: unknown mode: '" + str + "'");
 }
 
@@ -447,11 +471,33 @@ void SSLDynamicBallApproach::fromJson(const Json::Value& v, const std::string& d
     rhoban_fa::FunctionApproximatorFactory().tryLoadBinaryFromPath(v["finish_value"], dir_name, &finish_value);
   // Update limits according to the new parameters
   updateLimits();
+
+  if (mode == Mode::Task)
+  {
+    double min_dist_factor = collision_forward / ball_init_min_dist;
+    Eigen::MatrixXd task_limits(3, 2);
+    task_limits << min_dist_factor, 1.0, 0.0, 1.0, 0.0, 1.0;
+    setTaskLimits(task_limits);
+    setTaskNames({ "init_dist_factor", "init_dir_factor", "init_speed_factor" });
+  }
 }
 
 std::string SSLDynamicBallApproach::getClassName() const
 {
   return "SSLDynamicBallApproach";
+}
+
+Eigen::VectorXd SSLDynamicBallApproach::getAutomatedTask(double difficulty) const
+{
+  if (mode != Mode::Task)
+    throw std::runtime_error(DEBUG_INFO + "Mode is incompatible with tasks");
+  Eigen::MatrixXd task_limits = getTaskLimits();
+  Eigen::VectorXd task(task_limits.rows());
+  for (int i = 0; i < task.rows(); i++)
+  {
+    task(i) = task_limits(i, 1) * difficulty + task_limits(i, 0) * (1 - difficulty);
+  }
+  return task;
 }
 
 }  // namespace csa_mdp

@@ -30,6 +30,13 @@ namespace csa_mdp
 ///           toward the goal target, robot is moving at a speed similar to
 ///           the ball speed
 /// - Full: The robot starts as in Wide and end as in Finish
+/// - Task: A mode for curriculum learning, in this mode, task space allows to set
+///   the difficulty of the problem
+///
+/// Task space:
+/// - task[0]: initial_distance_factor (to ball)
+/// - task[1]: initial_alignment_factor (direction of ball/target)
+/// - task[2]: initial_speed_factor
 class SSLDynamicBallApproach : public BlackBoxProblem
 {
 public:
@@ -37,7 +44,8 @@ public:
   {
     Wide,
     Finish,
-    Full
+    Full,
+    Task
   };
 
   SSLDynamicBallApproach();
@@ -55,6 +63,7 @@ public:
 
   Eigen::VectorXd getWideStartingState(std::default_random_engine* engine) const;
   Eigen::VectorXd getFinishStartingState(std::default_random_engine* engine) const;
+  Eigen::VectorXd getTaskStartingState(std::default_random_engine* engine) const;
 
   /// Is current state a success (taking Mode into account)
   bool isSuccess(const Eigen::VectorXd& state) const;
@@ -76,6 +85,9 @@ public:
   void updateLimits();
   /// Update maximal distance at which the ball is accepted
   void setMaxDist(double dist);
+
+  /// Generate a task for teachers based on provided difficulty in [0,1]
+  Eigen::VectorXd getAutomatedTask(double difficulty) const override;
 
 protected:
   // STATE LIMITS
