@@ -37,6 +37,7 @@ namespace csa_mdp
 /// - task[0]: initial_distance_factor (to ball)
 /// - task[1]: initial_alignment_factor (direction of ball/target)
 /// - task[2]: initial_speed_factor
+/// - task[3]: robot_acc_factor
 class SSLDynamicBallApproach : public BlackBoxProblem
 {
 public:
@@ -86,6 +87,11 @@ public:
   /// Update maximal distance at which the ball is accepted
   void setMaxDist(double dist);
 
+  /// Return a ratio in [0,1] multiplying the maximal allowed action
+  double getMaxAccRatio() const;
+
+  /// Set the task and update limits according to the new task
+  void setTask(const Eigen::VectorXd& task) override;
   /// Generate a task for teachers based on provided difficulty in [0,1]
   Eigen::VectorXd getAutomatedTask(double difficulty) const override;
 

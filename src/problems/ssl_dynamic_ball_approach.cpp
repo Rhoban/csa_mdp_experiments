@@ -114,6 +114,7 @@ void SSLDynamicBallApproach::updateLimits()
       // Robot orientation
       -M_PI, M_PI;
   action_limits << -max_acc, max_acc, -max_acc, max_acc, -max_acc_theta, max_acc_theta;
+  action_limits *= getMaxAccRatio();
   setStateLimits(state_limits);
   setActionLimits({ action_limits });
 
@@ -173,7 +174,7 @@ Problem::Result SSLDynamicBallApproach::getSuccessor(const Eigen::VectorXd& stat
   // rdt: referential of the robot at time 'now+dt'
   // BOUNDING ACCELERATION AND SPEED TO PHYSICAL LIMITS
   Eigen::Vector3d robot_acc_in_rt = action.segment(1, 3);
-  robot_acc_in_rt = boundXYA(robot_acc_in_rt, max_acc, max_acc_theta);
+  robot_acc_in_rt = boundXYA(robot_acc_in_rt, max_acc * getMaxAccRatio(), max_acc_theta * getMaxAccRatio());
   Eigen::Vector3d robot_curr_speed_in_rt = state.segment(4, 3);
   Eigen::Vector3d robot_next_speed_in_rt = robot_curr_speed_in_rt + robot_acc_in_rt * dt;
   robot_next_speed_in_rt = boundXYA(robot_next_speed_in_rt, max_robot_speed, max_robot_speed_theta);
@@ -469,22 +470,38 @@ void SSLDynamicBallApproach::fromJson(const Json::Value& v, const std::string& d
   // If applicable load the finish value
   if (v.isMember("finish_value"))
     rhoban_fa::FunctionApproximatorFactory().tryLoadBinaryFromPath(v["finish_value"], dir_name, &finish_value);
-  // Update limits according to the new parameters
-  updateLimits();
 
   if (mode == Mode::Task)
   {
     double min_dist_factor = collision_forward / ball_init_min_dist;
-    Eigen::MatrixXd task_limits(3, 2);
-    task_limits << min_dist_factor, 1.0, 0.0, 1.0, 0.0, 1.0;
+    Eigen::MatrixXd task_limits(4, 2);
+    task_limits << min_dist_factor, 1.0, 0.0, 1.0, 0.0, 1.0, 0.1, 1.0;
     setTaskLimits(task_limits);
-    setTaskNames({ "init_dist_factor", "init_dir_factor", "init_speed_factor" });
+    setTaskNames({ "init_dist_factor", "init_dir_factor", "init_speed_factor", "robot_acc_factor" });
+    double difficulty = 1.0;
+    rhoban_utils::tryRead(v, "difficulty", &difficulty);
+    setTask(getAutomatedTask(difficulty));
   }
+  // Update limits according to the new parameters
+  updateLimits();
 }
 
 std::string SSLDynamicBallApproach::getClassName() const
 {
   return "SSLDynamicBallApproach";
+}
+
+double SSLDynamicBallApproach::getMaxAccRatio() const
+{
+  if (mode == Mode::Task)
+    return active_task(3);
+  return 1.0;
+}
+
+void SSLDynamicBallApproach::setTask(const Eigen::VectorXd& task)
+{
+  Problem::setTask(task);
+  updateLimits();
 }
 
 Eigen::VectorXd SSLDynamicBallApproach::getAutomatedTask(double difficulty) const
