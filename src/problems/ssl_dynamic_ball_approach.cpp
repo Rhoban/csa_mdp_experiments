@@ -1,5 +1,8 @@
 #include "problems/ssl_dynamic_ball_approach.h"
 
+#include <rhoban_geometry/circle.h>
+#include <rhoban_geometry/ray2d.h>
+#include <rhoban_geometry/segment.h>
 #include <rhoban_utils/angle.h>
 #include <rhoban_fa/function_approximator_factory.h>
 
@@ -63,12 +66,6 @@ SSLDynamicBallApproach::SSLDynamicBallApproach()
   , max_kick_dir_tol(rhoban_utils::deg2rad(20))
   , max_acc(max_robot_speed / 2)              //  2 s to reach full speed
   , max_acc_theta(max_robot_speed_theta / 2)  // 2 s to reach full speed
-  , finish_x_limits(0.09, 0.4)
-  , finish_y_tol(0.08)
-  , finish_diff_speed_x_limits(-0.05, 0.2)  // No real idea
-  , finish_diff_speed_y_max(0.1)            // Ideally less
-  , finish_speed_theta_max(rhoban_utils::deg2rad(20))
-  , finish_init_min_dist(0.3)
   , kick_x_limits(0.09, 0.12)
   , kick_y_tol(0.02)                     // Kicker width ~0.08
   , kick_diff_speed_x_limits(0.0, 0.05)  // No real idea
@@ -79,7 +76,6 @@ SSLDynamicBallApproach::SSLDynamicBallApproach()
   , collision_reward(-200)
   , out_of_space_reward(-200)
   , dt(0.033)  // Around 30 Hz
-  , mode(Mode::Finish)
   , ball_init_min_dist(collision_radius + 0.05)
   , ball_init_max_dist(ball_max_dist / 2)
   , target_init_min_dist(0.0)
@@ -128,33 +124,6 @@ void SSLDynamicBallApproach::setMaxDist(double dist)
 {
   ball_max_dist = dist;
   updateLimits();
-}
-
-bool SSLDynamicBallApproach::isTerminal(const Eigen::VectorXd& state) const
-{
-  return isSuccess(state) || isColliding(state) || isOutOfSpace(state);
-}
-
-double SSLDynamicBallApproach::getReward(const Eigen::VectorXd& state, const Eigen::VectorXd& action,
-                                         const Eigen::VectorXd& dst) const
-{
-  (void)state;
-  (void)action;
-  if (isSuccess(dst))
-  {
-    if (mode == Mode::Wide && finish_value)
-      return finish_value->predict(getLearningState(state))(0);
-    return 0;
-  }
-  if (isColliding(dst))
-  {
-    return collision_reward;
-  }
-  if (isOutOfSpace(dst))
-  {
-    return out_of_space_reward;
-  }
-  return -dt;  // Default reward
 }
 
 Problem::Result SSLDynamicBallApproach::getSuccessor(const Eigen::VectorXd& state, const Eigen::VectorXd& action,
@@ -223,41 +192,93 @@ Problem::Result SSLDynamicBallApproach::getSuccessor(const Eigen::VectorXd& stat
   successor.segment(7, 2) = ball_speed_in_rdt.segment(0, 2);
   successor(9) = state(9);  // kick_dir_tol is fixed for each trial
   successor(10) = state(10) + theta_diff;
-  // Filling up result
+  // Setting reward and terminal status + adjusting ball position on collision
   Problem::Result result;
+  result.reward = -dt;
+  result.terminal = false;
+  // Approximations here:
+  // - We consider that the trajectory of the ball starts in rt and ends in rdt
+  // - We consider only collision with final point
+  rhoban_geometry::Point ball_start(state.segment(0, 2));
+  rhoban_geometry::Point ball_end(successor.segment(0, 2));
+  rhoban_geometry::Segment ball_traj(ball_start, ball_end);
+  rhoban_geometry::Circle collision_circle(0, 0, collision_radius);
+  rhoban_geometry::Segment kick_segment(rhoban_geometry::Point(collision_radius, -kick_y_tol),
+                                        rhoban_geometry::Point(collision_radius, kick_y_tol));
+  rhoban_geometry::Ray2D ray(ball_start.toVector(), (ball_end - ball_start).toVector());
+  rhoban_geometry::Point intersection_pos;
+  int nb_intersections = ray.computeIntersections(collision_circle, &intersection_pos);
+  // If intersection is in future, then intersection should be ignored
+  if (nb_intersections > 0 && ball_start.getDist(intersection_pos) > ball_start.getDist(ball_end))
+    nb_intersections = 0;
+  // If ball goes through the collision circle, or is inside the collision radius at start or end, check for collision
+  if (nb_intersections > 0 || isColliding(state) || isColliding(successor))
+  {
+    // Cases where ball is in front of robot at start and end of the step are ignored
+    // False negatives might occur here
+    if (state(0) < collision_forward || successor(0) < collision_forward)
+    {
+      result.terminal = true;
+      if (ball_traj.intersects(kick_segment))
+      {
+        // CASE 1: ball has entered in contact with kick_segment
+        rhoban_geometry::Point intersection = ball_traj.getLine().intersection(kick_segment.getLine());
+        successor.segment(0, 2) = intersection.toVector();
+        if (isKickable(successor))
+        {
+          // CASE 1A: ball can be kicked directly
+          result.reward = 0;
+        }
+        else
+        {
+          // CASE 1B: Robot speed or direction is not appropriate when ball collides with the kicker
+          result.reward = collision_reward;
+        }
+      }
+      else
+      {
+        // CASE 2: Although there might be exceptions, we consider that ball has collided with the robot
+        // Note due to internal computations, it might be possible that one  of the state collides and not the other
+        // without detecting intersection.
+        if (nb_intersections > 0)
+        {
+          successor.segment(0, 2) = intersection_pos.toVector();
+        }
+        result.reward = collision_reward;
+      }
+    }
+  }
+  if (!result.terminal)
+  {
+    if (isKickable(successor))
+    {
+      result.terminal = true;
+      result.reward = 0;
+    }
+    // In case no terminal condition has been met, check if successor is in state space
+    if (isOutOfSpace(successor))
+    {
+      result.terminal = true;
+      result.reward = out_of_space_reward;
+    }
+  }
+  // Filling up result
   result.successor = successor;
-  result.reward = getReward(state, action, successor);
-  result.terminal = isTerminal(successor);
   return result;
 }
 
 Eigen::VectorXd SSLDynamicBallApproach::getStartingState(std::default_random_engine* engine) const
-{
-  switch (mode)
-  {
-    case Mode::Wide:
-    case Mode::Full:
-      return getWideStartingState(engine);
-    case Mode::Finish:
-      return getFinishStartingState(engine);
-    case Mode::Task:
-      return getTaskStartingState(engine);
-  }
-  throw std::logic_error("SSLDynamicBallApproach::getStartingState: unknown mode");
-}
-
-Eigen::VectorXd SSLDynamicBallApproach::getWideStartingState(std::default_random_engine* engine) const
 {
   // Creating the distribution
   std::uniform_real_distribution<double> ball_dist_distrib(ball_init_min_dist, ball_init_max_dist),
       target_dist_distrib(target_init_min_dist, target_init_max_dist), ball_speed_distrib(0, max_ball_speed),
       angle_distrib(-M_PI, M_PI), kick_dir_tol_distrib(min_kick_dir_tol, max_kick_dir_tol);
   // Generating random values
-  double ball_dist = ball_dist_distrib(*engine);
-  double ball_theta = angle_distrib(*engine);
+  double ball_dist = active_task(0) * ball_dist_distrib(*engine);
+  double ball_theta = active_task(1) * angle_distrib(*engine);
   double target_dist = target_dist_distrib(*engine);
-  double target_theta = angle_distrib(*engine);
-  double ball_speed = ball_speed_distrib(*engine);
+  double target_theta = active_task(1) * angle_distrib(*engine);
+  double ball_speed = active_task(2) * ball_speed_distrib(*engine);
   double ball_speed_theta = angle_distrib(*engine);
   double kick_dir_tol = kick_dir_tol_distrib(*engine);
   // Updating state
@@ -268,94 +289,6 @@ Eigen::VectorXd SSLDynamicBallApproach::getWideStartingState(std::default_random
   state(9) = kick_dir_tol;
   state(10) = 0;
   return state;
-}
-
-Eigen::VectorXd SSLDynamicBallApproach::getFinishStartingState(std::default_random_engine* engine) const
-{
-  // Creating the distribution
-  std::uniform_real_distribution<double> ball_x_distrib(finish_init_min_dist, finish_x_limits(1)),
-      ball_y_distrib(-finish_y_tol, finish_y_tol), target_dist_distrib(target_init_min_dist, target_init_max_dist),
-      robot_speed_offset_x_distrib(finish_diff_speed_x_limits(0), finish_diff_speed_x_limits(1)),
-      robot_speed_offset_y_distrib(-finish_diff_speed_y_max, finish_diff_speed_y_max),
-      robot_speed_theta_distrib(-finish_speed_theta_max, finish_speed_theta_max), ball_speed_distrib(0, max_ball_speed),
-      angle_distrib(-M_PI, M_PI), kick_dir_tol_distrib(min_kick_dir_tol, max_kick_dir_tol);
-  // Generating random values
-  double ball_x = ball_x_distrib(*engine);
-  double ball_y = ball_y_distrib(*engine);
-  double target_dist = target_dist_distrib(*engine);
-  double ball_speed_norm = ball_speed_distrib(*engine);
-  double ball_speed_theta = angle_distrib(*engine);
-  double robot_speed_dx = robot_speed_offset_x_distrib(*engine);
-  double robot_speed_dy = robot_speed_offset_y_distrib(*engine);
-  double robot_speed_theta = robot_speed_theta_distrib(*engine);
-  double kick_dir_tol = kick_dir_tol_distrib(*engine);
-  // Target dir has to be valid at start:
-  std::uniform_real_distribution<double> target_dir_distrib(-kick_dir_tol, kick_dir_tol);
-  double target_dir = target_dir_distrib(*engine);
-  //
-  Eigen::Vector2d ball_speed = pointFromPolar(ball_speed_norm, ball_speed_theta);
-  Eigen::Vector2d robot_speed = ball_speed + Eigen::Vector2d(robot_speed_dx, robot_speed_dy);
-  // Updating state
-  Eigen::VectorXd state = Eigen::VectorXd::Zero(11);
-  state.segment(0, 2) = Eigen::Vector2d(ball_x, ball_y);
-  state.segment(2, 2) = pointFromPolar(target_dist, target_dir);
-  state.segment(4, 2) = robot_speed;
-  state(6) = robot_speed_theta;
-  state.segment(7, 2) = ball_speed;
-  state(9) = kick_dir_tol;
-  state(10) = 0;
-  return state;
-}
-
-Eigen::VectorXd SSLDynamicBallApproach::getTaskStartingState(std::default_random_engine* engine) const
-{
-  Eigen::VectorXd state = getWideStartingState(engine);
-  // Scaling distance and direction to ball
-  double ball_dist = active_task(0) * state.segment(0, 2).norm();
-  double ball_dir = active_task(1) * atan2(state(1), state(0));
-  state(0) = ball_dist * cos(ball_dir);
-  state(1) = ball_dist * sin(ball_dir);
-  // Scaling direction of target
-  double target_dist = state.segment(2, 2).norm();
-  double target_dir = active_task(1) * atan2(state(4), state(3));
-  state(2) = target_dist * cos(target_dir);
-  state(3) = target_dist * sin(target_dir);
-  // Scaling speed of ball and robot
-  state.segment(4, 5) = active_task(2) * state.segment(4, 5);
-
-  return state;
-}
-
-bool SSLDynamicBallApproach::isSuccess(const Eigen::VectorXd& state) const
-{
-  switch (mode)
-  {
-    case Mode::Finish:
-    case Mode::Full:
-    case Mode::Task:
-      return isKickable(state);
-    case Mode::Wide:
-      return isFinishState(state);
-  }
-  throw std::logic_error("Unknown mode");
-}
-
-bool SSLDynamicBallApproach::isFinishState(const Eigen::VectorXd& state) const
-{
-  // Get speed difference
-  const Eigen::Vector2d& robot_speed = state.segment(4, 2);
-  const Eigen::Vector2d& ball_speed = state.segment(7, 2);
-  Eigen::Vector2d speed_diff = robot_speed - ball_speed;
-  double target_dir_rad = atan2(state(3), state(2));  // Result in [-pi,pi]
-  // Computing conditions separately
-  bool ball_x_ok = state(0) >= finish_x_limits(0) && state(0) <= finish_x_limits(1);
-  bool ball_y_ok = std::fabs(state(1)) <= finish_y_tol;
-  bool speed_x_ok = speed_diff(0) >= finish_diff_speed_x_limits(0) && speed_diff(0) <= finish_diff_speed_x_limits(1);
-  bool speed_y_ok = std::fabs(speed_diff(1)) <= finish_diff_speed_y_max;
-  bool speed_theta_ok = std::fabs(state(6)) <= finish_speed_theta_max;
-  bool direction_ok = std::fabs(target_dir_rad) <= state(9);
-  // All conditions need to be gathered
-  return ball_x_ok && ball_y_ok && speed_x_ok && speed_y_ok && speed_theta_ok && direction_ok;
 }
 
 bool SSLDynamicBallApproach::isKickable(const Eigen::VectorXd& state) const
@@ -398,31 +331,12 @@ Json::Value SSLDynamicBallApproach::toJson() const
   throw std::logic_error("SSLDynamicBallApproach::toJson: not implemented");
 }
 
-static SSLDynamicBallApproach::Mode str2Mode(const std::string& str)
-{
-  if (str == "Finish")
-    return SSLDynamicBallApproach::Mode::Finish;
-  if (str == "Wide")
-    return SSLDynamicBallApproach::Mode::Wide;
-  if (str == "Full")
-    return SSLDynamicBallApproach::Mode::Full;
-  if (str == "Task")
-    return SSLDynamicBallApproach::Mode::Task;
-  throw std::logic_error("SSLDynamicBallApproach: str2Mode: unknown mode: '" + str + "'");
-}
-
 void SSLDynamicBallApproach::fromJson(const Json::Value& v, const std::string& dir_name)
 {
   (void)dir_name;
-  // Read current mode
-  std::string mode_str;
-  rhoban_utils::tryRead(v, "mode", &mode_str);
-  if (mode_str != "")
-    mode = str2Mode(mode_str);
   // Read internal properties
   double max_robot_speed_theta_deg(rhoban_utils::rad2deg(max_robot_speed_theta));
   double max_acc_theta_deg(rhoban_utils::rad2deg(max_acc_theta));
-  double finish_speed_theta_max_deg(rhoban_utils::rad2deg(finish_speed_theta_max));
   double kick_speed_theta_max_deg(rhoban_utils::rad2deg(kick_speed_theta_max));
   double angular_stddev_deg(rhoban_utils::rad2deg(angular_stddev));
   double min_kick_dir_tol_deg(rhoban_utils::rad2deg(min_kick_dir_tol));
@@ -436,10 +350,6 @@ void SSLDynamicBallApproach::fromJson(const Json::Value& v, const std::string& d
   rhoban_utils::tryRead(v, "max_kick_dir_tol", &max_kick_dir_tol_deg);
   rhoban_utils::tryRead(v, "max_acc", &max_acc);
   rhoban_utils::tryRead(v, "max_acc_theta", &max_acc_theta_deg);
-  rhoban_utils::tryRead(v, "finish_y_tol", &finish_y_tol);
-  rhoban_utils::tryRead(v, "finish_diff_speed_y_max", &finish_diff_speed_y_max);
-  rhoban_utils::tryRead(v, "finish_speed_theta_max", &finish_speed_theta_max_deg);
-  rhoban_utils::tryRead(v, "finish_init_min_dist", &finish_init_min_dist);
   rhoban_utils::tryRead(v, "kick_y_tol", &kick_y_tol);
   rhoban_utils::tryRead(v, "kick_diff_speed_y_max", &kick_diff_speed_y_max);
   rhoban_utils::tryRead(v, "kick_speed_theta_max", &kick_speed_theta_max_deg);
@@ -454,34 +364,25 @@ void SSLDynamicBallApproach::fromJson(const Json::Value& v, const std::string& d
   rhoban_utils::tryRead(v, "target_init_max_dist", &target_init_max_dist);
   rhoban_utils::tryRead(v, "cart_stddev", &cart_stddev);
   rhoban_utils::tryRead(v, "angular_stddev", &angular_stddev_deg);
-  rhoban_utils::tryReadEigen(v, "finish_x_limits", &finish_x_limits);
-  rhoban_utils::tryReadEigen(v, "finish_diff_speed_x_limits", &finish_diff_speed_x_limits);
   rhoban_utils::tryReadEigen(v, "kick_x_limits", &kick_x_limits);
   rhoban_utils::tryReadEigen(v, "kick_diff_speed_x_limits", &kick_diff_speed_x_limits);
   rolling_ball_model.tryRead(v, "ball_rolling_model", dir_name);
   // Applying values which have been read in Deg:
   max_robot_speed_theta = rhoban_utils::deg2rad(max_robot_speed_theta_deg);
   max_acc_theta = rhoban_utils::deg2rad(max_acc_theta_deg);
-  finish_speed_theta_max = rhoban_utils::deg2rad(finish_speed_theta_max_deg);
   kick_speed_theta_max = rhoban_utils::deg2rad(kick_speed_theta_max_deg);
   angular_stddev = rhoban_utils::deg2rad(angular_stddev_deg);
   min_kick_dir_tol = rhoban_utils::deg2rad(min_kick_dir_tol_deg);
   max_kick_dir_tol = rhoban_utils::deg2rad(max_kick_dir_tol_deg);
-  // If applicable load the finish value
-  if (v.isMember("finish_value"))
-    rhoban_fa::FunctionApproximatorFactory().tryLoadBinaryFromPath(v["finish_value"], dir_name, &finish_value);
 
-  if (mode == Mode::Task)
-  {
-    double min_dist_factor = collision_forward / ball_init_min_dist;
-    Eigen::MatrixXd task_limits(4, 2);
-    task_limits << min_dist_factor, 1.0, 0.0, 1.0, 0.0, 1.0, 0.1, 1.0;
-    setTaskLimits(task_limits);
-    setTaskNames({ "init_dist_factor", "init_dir_factor", "init_speed_factor", "robot_acc_factor" });
-    double difficulty = 1.0;
-    rhoban_utils::tryRead(v, "difficulty", &difficulty);
-    setTask(getAutomatedTask(difficulty));
-  }
+  double difficulty = 1.0;
+  rhoban_utils::tryRead(v, "difficulty", &difficulty);
+  double min_dist_factor = collision_forward / ball_init_min_dist;
+  Eigen::MatrixXd task_limits(4, 2);
+  task_limits << min_dist_factor, 1.0, 0.0, 1.0, 0.0, 1.0, 0.1, 1.0;
+  setTaskLimits(task_limits);
+  setTaskNames({ "init_dist_factor", "init_dir_factor", "init_speed_factor", "robot_acc_factor" });
+  setTask(getAutomatedTask(difficulty));
   // Update limits according to the new parameters
   updateLimits();
 }
@@ -493,8 +394,8 @@ std::string SSLDynamicBallApproach::getClassName() const
 
 double SSLDynamicBallApproach::getMaxAccRatio() const
 {
-  if (mode == Mode::Task)
-    return active_task(3);
+  // getMaxAccRatio is temporarily always set to 1
+  // return active_task(3);
   return 1.0;
 }
 
@@ -506,8 +407,6 @@ void SSLDynamicBallApproach::setTask(const Eigen::VectorXd& task)
 
 Eigen::VectorXd SSLDynamicBallApproach::getAutomatedTask(double difficulty) const
 {
-  if (mode != Mode::Task)
-    throw std::runtime_error(DEBUG_INFO + "Mode is incompatible with tasks");
   Eigen::MatrixXd task_limits = getTaskLimits();
   Eigen::VectorXd task(task_limits.rows());
   for (int i = 0; i < task.rows(); i++)

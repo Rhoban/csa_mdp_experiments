@@ -7,7 +7,8 @@ if (length(args) < 1) {
     quit(status=1)
 }
 
-categories <- autoCategories(args[1], "results.csv")
+categories <- autoCategories(args[1], "dbcl_results.csv")
+## categories <- autoCategories(args[1], "results.csv")
 print(categories)
 
 data <- gatherCategories(categories)
@@ -16,6 +17,7 @@ head(data)
 g <- ggplot(data, aes(x=elapsed,y=score,color=category,group=path))
 g <- g + geom_line(size=0.1)
 g <- g + geom_point(size=0.5)
+g <- g + facet_wrap(aes(difficulty))
 # Not displaying confidence interval because the different points are not
 # independent at all.
 ## g <- g + geom_smooth(aes(group=category), se = FALSE)

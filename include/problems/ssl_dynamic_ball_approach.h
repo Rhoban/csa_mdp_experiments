@@ -23,54 +23,23 @@ namespace csa_mdp
 /// - state[9]   -> Kicking tolerance (do not change at each step)
 /// - state[10]  -> Orientation of the robot (debug purpose only)
 ///
-/// There are three different setups for the problem: see Mode
-/// - Wide: The ball starts at a random orientation with a random speed and
-///         robot is stationary
-/// - Finish: The robot start with the ball in front of him, roughly aligned
-///           toward the goal target, robot is moving at a speed similar to
-///           the ball speed
-/// - Full: The robot starts as in Wide and end as in Finish
-/// - Task: A mode for curriculum learning, in this mode, task space allows to set
-///   the difficulty of the problem
-///
 /// Task space:
 /// - task[0]: initial_distance_factor (to ball)
 /// - task[1]: initial_alignment_factor (direction of ball/target)
 /// - task[2]: initial_speed_factor
-/// - task[3]: robot_acc_factor
+/// - task[3]: robot_acc_factor (temporarily disabled)
 class SSLDynamicBallApproach : public BlackBoxProblem
 {
 public:
-  enum Mode
-  {
-    Wide,
-    Finish,
-    Full,
-    Task
-  };
-
   SSLDynamicBallApproach();
 
   std::vector<int> getLearningDimensions() const override;
-
-  bool isTerminal(const Eigen::VectorXd& state) const;
-
-  double getReward(const Eigen::VectorXd& state, const Eigen::VectorXd& action, const Eigen::VectorXd& dst) const;
 
   Problem::Result getSuccessor(const Eigen::VectorXd& state, const Eigen::VectorXd& action,
                                std::default_random_engine* engine) const override;
 
   Eigen::VectorXd getStartingState(std::default_random_engine* engine) const override;
 
-  Eigen::VectorXd getWideStartingState(std::default_random_engine* engine) const;
-  Eigen::VectorXd getFinishStartingState(std::default_random_engine* engine) const;
-  Eigen::VectorXd getTaskStartingState(std::default_random_engine* engine) const;
-
-  /// Is current state a success (taking Mode into account)
-  bool isSuccess(const Eigen::VectorXd& state) const;
-
-  /// Is current state inside
-  bool isFinishState(const Eigen::VectorXd& state) const;
   /// Is the ball kickable in given state ?
   bool isKickable(const Eigen::VectorXd& state) const;
   /// Is the robot colliding with the ball
@@ -118,24 +87,6 @@ protected:
   /// The maximal angular acceleration
   double max_acc_theta;
 
-  // FINISH LIMITS
-  // Limits on x-axis for entering the 'finish' mode [m]
-  Eigen::Vector2d finish_x_limits;
-  // Limit on absolute value for y-axis for entering in 'finish' mode [m]
-  double finish_y_tol;
-  // Limit on difference of speed (between ball and robot) along x_axis to enter
-  // 'finish' mode [m/s]
-  Eigen::Vector2d finish_diff_speed_x_limits;
-  /// Difference of speed (between ball and robot) along y-axis (robot
-  /// referential) has to be in [-finish_diff_speed_y_max,finish_diff_speed_y_max]
-  /// to enter 'finish' mode [m/s]
-  double finish_diff_speed_y_max;
-  /// Angular speed has to be in [-finish_speed_theta_max, finish_speed_theta_max]
-  /// to enter 'finish' mode [rad/s]
-  double finish_speed_theta_max;
-  /// The minimal distance for initial states in Finish Mode
-  double finish_init_min_dist;
-
   // KICK LIMITS
   // Limits on x-axis to perform a kick [m]
   Eigen::Vector2d kick_x_limits;
@@ -167,8 +118,6 @@ protected:
   double dt;
 
   // STATE INITIALIZATION
-  Mode mode;
-
   /// Minimal distance at the beginning [m] (Wide mode)
   double ball_init_min_dist;
 

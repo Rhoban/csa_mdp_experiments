@@ -14,7 +14,9 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>rhoban_csa_mdp</build_depend> <!-- rhoban/csa_mdp.git -->
+  <build_depend>rhoban_geometry</build_depend> <!-- rhoban/geometry.git -->
 
   <run_depend>rhoban_csa_mdp</run_depend>
+  <run_depend>rhoban_geometry</run_depend>
 
 </package>

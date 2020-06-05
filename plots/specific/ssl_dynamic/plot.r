@@ -77,13 +77,6 @@ mkKickArea <- function(config)
     mkRect(center, dx/2, config$kick_y_tol);
 }
 
-mkFinishArea <- function(config)
-{
-    dx <- config$finish_x_limits[2] - config$finish_x_limits[1]
-    center <- c(mean(config$finish_x_limits), 0)
-    mkRect(center, dx/2, config$finish_y_tol);
-}
-
 # Create the triangle going from the robot and including all the acceptable position for the target
 # dir_length: the length of the target vector
 mkDirOkZoneTarget <- function(kick_tol, robot_x, robot_y, robot_dir, dir_length = 100) {
@@ -163,12 +156,7 @@ vectorPlotTarget <- function(data, variables, outputPath, options, config)
     g <- g + geom_polygon(aes(x=x,y=y), collisionData , size = 0,
                           fill= collisionColor, alpha=1)
     # Adding kick area
-    okZone <- NULL
-    if (config$mode == "Wide") {
-        okZone <- mkHistory(vecData, config, options, mkFinishArea)
-    } else if (config$mode %in% c("Finish","Full")) {
-        okZone <- mkHistory(vecData, config, options, mkKickArea)
-    }
+    okZone <- mkHistory(vecData, config, options, mkKickArea)
     g <- g + geom_polygon(aes(x=x,y=y), okZone, size = 0,
                           fill= kickColor, alpha=0.5)
     # plot target

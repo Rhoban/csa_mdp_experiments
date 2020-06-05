@@ -3,7 +3,6 @@
 #include "policies/expert_approach.h"
 #include "policies/mixed_approach.h"
 #include "policies/ok_seed.h"
-#include "policies/ssl_dynamic_ball_approach/sdba_mixed_policy.h"
 
 #include "rhoban_csa_mdp/core/policy_factory.h"
 
@@ -21,7 +20,6 @@ int main(int argc, char** argv)
   PolicyFactory::registerExtraBuilder("ExpertApproach", []() { return std::unique_ptr<Policy>(new ExpertApproach); });
   PolicyFactory::registerExtraBuilder("MixedApproach", []() { return std::unique_ptr<Policy>(new MixedApproach); });
   PolicyFactory::registerExtraBuilder("OKSeed", []() { return std::unique_ptr<Policy>(new OKSeed); });
-  PolicyFactory::registerExtraBuilder("SDBAMixedPolicy", []() { return std::unique_ptr<Policy>(new SDBAMixedPolicy); });
 
   ExtendedProblemFactory::registerExtraProblems();
 
