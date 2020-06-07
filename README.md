@@ -41,8 +41,8 @@ This binary can be used for multiple purposes:
 
 ## ssl_experiment (optional)
 
-This binary integrates two [SSL](https://ssl.robocup.org/) libraries of the team [NAMeC](https://namec.fr) ([core](https://gitlab.namec.fr/ssl/software/backend/libs/core) and [base](https://gitlab.namec.fr/ssl/software/backend/libs/base)) with the **learning_machine** in order to launch real-world experimentations.
-Currently, it's possible to run experiment under the official SSL simulator named **grSim**. ([download link](https://gitlab.namec.fr/ssl/software/external/grSim)).
+This binary integrates two [SSL](https://ssl.robocup.org/) libraries of the team [NAMeC](https://namec.fr) ([core](https://gitlab.namec.fr/ssl/software/backend/libs/core) and [base](https://gitlab.namec.fr/ssl/software/backend/libs/base)) with the `learning_machine` in order to launch real-world experimentations.
+Currently, it's possible to run experiments under the official SSL simulator named `grSim`.([download link](https://gitlab.namec.fr/ssl/software/external/grSim)).
 
 Note: You should check [core](https://gitlab.namec.fr/ssl/software/backend/libs/core) and [base](https://gitlab.namec.fr/ssl/software/backend/libs/base) README.md files to be able to build the `ssl_experiment` binary.
 
