@@ -107,6 +107,8 @@ vectorPlotTarget <- function(data, variables, outputPath, options, config)
         "target_y" = 0,
         "robot_x" = -c_dir * data$target_x + s_dir * data$target_y,
         "robot_y" = -s_dir * data$target_x - c_dir * data$target_y,
+        "ball_vx" = data$ball_speed_x,
+        "ball_vy" = data$ball_speed_y,
         "step" = data$step,
         "time" = data$step * dt,
         "kick_dir_tol" = data$kick_dir_tol)
@@ -114,6 +116,7 @@ vectorPlotTarget <- function(data, variables, outputPath, options, config)
     vecData$robot_end_y <- vecData$robot_y + s_dir * robot_arrow_length
     vecData$ball_x <- vecData$robot_x + c_dir * data$ball_x - s_dir * data$ball_y
     vecData$ball_y <- vecData$robot_y + s_dir * data$ball_x + c_dir * data$ball_y
+    vecData$ball_speed <- (vecData$ball_vx ** 2 + vecData$ball_vy ** 2) ** 0.5
 
     # Last entry is used to draw finalStatus
     lastEntry <- tail(vecData,1)
@@ -202,8 +205,18 @@ vectorPlotTarget <- function(data, variables, outputPath, options, config)
     g <- g + theme_bw()
     # Mode
     if (options$gif) {
+        getFrameTitle <- function(step) {
+            sprintf("Ball speed: %.2f [m/s] , elapsed: %.2f/%.2f [s]",
+                    ## 0.03,
+                    vecData[which(vecData$step == step),]$ball_speed,
+                    dt *as.numeric(as.character(step)), max(vecData$time))
+        }
+        g <- g + labs(title="{getFrameTitle(current_frame)}")
         g <- g + transition_manual(step)
-        anim_save(file = outputPath, g, width = 600, height = 600, fps = 10)
+        start_pause <- 5
+        end_pause <- 5
+        nframes <- max(vecData$step) + start_pause + end_pause + 1
+        anim_save(file = outputPath, g, width = 600, height = 600, nframes = nframes, fps = 1/dt, start_pause = start_pause, end_pause = end_pause)
     } else { 
         ggsave(file = outputPath, g,width=5,height=5)
     }

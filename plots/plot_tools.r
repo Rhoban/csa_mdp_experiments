@@ -605,11 +605,8 @@ argsToCategories <- function(args)
 # - Each category will contain all the files inside its own path corresponding to the pattern
 autoCategories <- function(path, pattern)
 {
-    print("TEST")
     cat_paths <- list.dirs(path = path, full.names = TRUE, recursive = FALSE)
-    print(cat_paths)
     cat <- basename(cat_paths)
-    print(cat)
     result <- list()
     for (idx in 1:length(cat_paths)) {
         result[[cat[idx]]] <- list.files(path = cat_paths[idx], full.names = TRUE, pattern = pattern, recursive = TRUE)
