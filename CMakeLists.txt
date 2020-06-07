@@ -1,11 +1,13 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.16.2)
 project(csa_mdp_experiments)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++17")
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
+option(build_ssl_experiment "Build ssl_experiment binary" OFF)
+
+# Find catkin macros and libraries
+# if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
+# is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rhoban_csa_mdp
   rhoban_geometry
@@ -18,12 +20,12 @@ catkin_package(
   CATKIN_DEPENDS rhoban_csa_mdp rhoban_geometry
 )
 
-###########
-## Build ##
-###########
+############
+### Build ##
+############
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
+# Specify additional locations of header files
+# Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
   include
@@ -37,7 +39,7 @@ set(DIRECTORIES
   src/odometry
   src/policies
   src/problems
-  )
+)
 
 # Build ALL_SOURCES
 set (SOURCES)
@@ -81,17 +83,31 @@ target_link_libraries(blackbox_value_estimator ${catkin_LIBRARIES} csa_mdp_exper
 add_executable(robot_kick_comparator src/robot_kick_comparator.cpp)
 target_link_libraries(robot_kick_comparator ${catkin_LIBRARIES} csa_mdp_experiments)
 
-enable_testing()
-
-set(TESTS
-  problems/ssl_dynamic_ball_approach
-  )
-
-if (CATKIN_ENABLE_TESTING)
-  # create an executable for each test
-  foreach(test ${TESTS})
-    string(REPLACE "/" "_" id ${test})
-    catkin_add_gtest(${id} tests/${test}.cpp)
-    target_link_libraries(${id} ${catkin_LIBRARIES} csa_mdp_experiments)
-  endforeach(test)
+if( build_ssl_experiment )
+  add_executable(ssl_experiment src/ssl_experiment.cpp)
+  if( NOT TARGET NAMEC::Base )
+    include(FetchContent)
+    message(STATUS "Download dependancy: NAMeC Base...")
+    FetchContent_Declare(base
+      GIT_REPOSITORY https://gitlab.namec.fr/ssl/software/backend/libs/base.git
+      GIT_TAG master
+    )
+    FetchContent_MakeAvailable(base)
+  endif()
+  target_link_libraries(ssl_experiment PUBLIC ${catkin_LIBRARIES} csa_mdp_experiments NAMEC::Base)
 endif()
+
+# enable_testing()
+
+# set(TESTS
+#   problems/ssl_dynamic_ball_approach
+#   )
+
+# if (CATKIN_ENABLE_TESTING)
+#   # create an executable for each test
+#   foreach(test ${TESTS})
+#     string(REPLACE "/" "_" id ${test})
+#     catkin_add_gtest(${id} tests/${test}.cpp)
+#     target_link_libraries(${id} ${catkin_LIBRARIES} csa_mdp_experiments)
+#   endforeach(test)
+# endif()
