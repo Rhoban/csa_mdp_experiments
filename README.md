@@ -39,6 +39,18 @@ This binary can be used for multiple purposes:
 - Acquire samples in order to produce graphs of a policy on a given problem
   `configs/examples/fa_policy_tester.json`
 
+## ssl_experiment (optional)
+
+This binary integrates two [SSL](https://ssl.robocup.org/) libraries of the team [NAMeC](https://namec.fr) ([core](https://gitlab.namec.fr/ssl/software/backend/libs/core) and [base](https://gitlab.namec.fr/ssl/software/backend/libs/base)) with the **learning_machine** in order to launch real-world experimentations.
+Currently, it's possible to run experiment under the official SSL simulator named **grSim**. ([download link](https://gitlab.namec.fr/ssl/software/external/grSim)).
+
+Note: You should check (https://gitlab.namec.fr/ssl/software/backend/libs/core) and [base](https://gitlab.namec.fr/ssl/software/backend/libs/base) README.md files to be able to build the `ssl_experiment` binary.
+
+Build command under rhoban's workspace:
+```bash
+  ./workspace build -Dbuild_ssl_experiment=ON
+```
+
 # SCRIPTS
 
 ## mass_bb
@@ -67,9 +79,9 @@ An example to run the experiments on two computers is:
 
 Since tasks are likely to be long to execute, it is highly recommended to use
 `nohup` or something similar to use them and to remember.
- 
+
 The line above for computer `1` would therefore be replaced by:
-`nohup mass_bb.sh <base> 10 > learning_1_10 &` 
+`nohup mass_bb.sh <base> 10 > learning_1_10 &`
 
 # Plot scripts
 
@@ -88,7 +100,7 @@ interpret data. Some scripts are generic to all the learning experiments while
 some are specific to problems (e.g. displaying a 'run').
 
 DISCLAIMER: Currently, the folder only contains some rudimentary scripts with
-a lot of unused functions, it has been extracted from 
+a lot of unused functions, it has been extracted from
 
 ## Generic scripts
 
