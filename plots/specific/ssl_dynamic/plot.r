@@ -189,17 +189,38 @@ vectorPlotTarget <- function(data, variables, outputPath, options, config)
         g <- g + geom_line(aes(x=ball_x,y=ball_y,
                                 color = time))
     }
-    # Setting axis
-    g <- g + scale_x_continuous(name = "x [m]",
-                                breaks = variables[[x_var]][["breaks"]],
-                                labels = variables[[x_var]][["labels"]])
-    g <- g + scale_y_continuous(name = "y [m]",
-                                breaks = variables[[y_var]][["breaks"]],
-                                labels = variables[[y_var]][["labels"]])
     g <- g + scale_color_gradient(name="time [s]",
                                   low = stepMinColor, high = stepMaxColor)
-    g <- g + coord_cartesian(xlim = variables[[x_var]][["limits"]],
-                             ylim = variables[[y_var]][["limits"]])
+    if (is.na(cmd$options$space_size))
+    {
+                                        # Auto determination of limits
+        limits_x <- range(vecData$ball_x, vecData$robot_x)
+        limits_y <- range(vecData$ball_y, vecData$robot_y)
+        amplitude_x <- limits_x[2] - limits_x[1]
+        amplitude_y <- limits_y[2] - limits_y[1]
+        if (amplitude_x > amplitude_y) {
+            middle_y <- mean(limits_y)
+            limits_y <- c(middle_y - amplitude_x/2, middle_y + amplitude_x/2)
+        }
+        else {
+            middle_x <- mean(limits_x)
+            limits_x <- c(middle_x - amplitude_y/2, middle_x + amplitude_y/2)
+        }
+    g <- g + scale_x_continuous(name = "x [m]")
+    g <- g + scale_y_continuous(name = "y [m]")
+        g <- g + coord_cartesian(xlim = limits_x, ylim = limits_y)
+    }
+    else {
+                                        # Setting axis
+        g <- g + scale_x_continuous(name = "x [m]",
+                                    breaks = variables[[x_var]][["breaks"]],
+                                    labels = variables[[x_var]][["labels"]])
+        g <- g + scale_y_continuous(name = "y [m]",
+                                    breaks = variables[[y_var]][["breaks"]],
+                                    labels = variables[[y_var]][["labels"]])
+        g <- g + coord_cartesian(xlim = variables[[x_var]][["limits"]],
+                                 ylim = variables[[y_var]][["limits"]])
+    }
 
     # Set theme
     g <- g + theme_bw()
@@ -207,7 +228,6 @@ vectorPlotTarget <- function(data, variables, outputPath, options, config)
     if (options$gif) {
         getFrameTitle <- function(step) {
             sprintf("Ball speed: %.2f [m/s] , elapsed: %.2f/%.2f [s]",
-                    ## 0.03,
                     vecData[which(vecData$step == step),]$ball_speed,
                     dt *as.numeric(as.character(step)), max(vecData$time))
         }
@@ -251,7 +271,7 @@ vectorPlotRuns <- function(path, variables, options, problem_config)
 option_list <- list(
     make_option(c("-n","--nb_runs"), type="integer", default=0,
                 help="Number of runs to plot, 0 means all runs are plotted"),
-    make_option(c("-s","--space_size"), type="double", default=1.0,
+    make_option(c("-s","--space_size"), type="double", default=NA,
                 help="Size of the space to show on graphs"),
     make_option(c("-o","--order"), action="store_true", default = FALSE,
                 help="Order values of rewards from best to worse"),
@@ -275,20 +295,24 @@ if (problem[["class name"]] != "SSLDynamicBallApproach") {
     print("Invalid problem: expecting a SSLDynamicBallApproach problem")
     quit()
 }
-variables <- list(x      = list(limits = c(-cmd$options$space_size, cmd$options$space_size)),
-                  y      = list(limits = c(-cmd$options$space_size, cmd$options$space_size)))
-# computing breaks
-for (v in names(variables))
+variables <- NA
+if (!is.na(cmd$options$space_size))
 {
-    min <- variables[[v]][["limits"]][1]
-    max <- variables[[v]][["limits"]][2]
-    variables[[v]][["breaks"]] = min + (max - min) * seq(0,1,1/4)
-}
-# computing labels
-for (v in names(variables))
-{
-    breaks <- variables[[v]][["breaks"]]
-    variables[[v]][["labels"]] = sapply(breaks, toString)
+    variables <- list(x      = list(limits = c(-cmd$options$space_size, cmd$options$space_size)),
+                      y      = list(limits = c(-cmd$options$space_size, cmd$options$space_size)))
+                                        # computing breaks
+    for (v in names(variables))
+    {
+        min <- variables[[v]][["limits"]][1]
+        max <- variables[[v]][["limits"]][2]
+        variables[[v]][["breaks"]] = min + (max - min) * seq(0,1,1/4)
+    }
+                                        # computing labels
+    for (v in names(variables))
+    {
+        breaks <- variables[[v]][["breaks"]]
+        variables[[v]][["labels"]] = sapply(breaks, toString)
+    }
 }
 
 
