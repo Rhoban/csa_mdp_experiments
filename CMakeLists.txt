@@ -37,6 +37,7 @@ set(DIRECTORIES
   src/odometry
   src/policies
   src/problems
+  src/agent_selector
   )
 
 # Build ALL_SOURCES
