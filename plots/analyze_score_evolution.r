@@ -1,5 +1,10 @@
 source("plot_tools.r")
 
+
+# TODO: Add options
+# - pattern for files
+# - difficulty
+
 args <- commandArgs(TRUE)
 
 if (length(args) < 1) {
@@ -7,11 +12,11 @@ if (length(args) < 1) {
     quit(status=1)
 }
 
-categories <- autoCategories(args[1], "dbcl_results.csv")
-## categories <- autoCategories(args[1], "results.csv")
+categories <- autoCategories(args[1], "results.csv")
 print(categories)
 
-data <- gatherCategories(categories)
+columns <- c("elapsed","score", "difficulty")
+data <- gatherCategories(categories, columns)
 head(data)
 
 g <- ggplot(data, aes(x=elapsed,y=score,color=category,group=path))

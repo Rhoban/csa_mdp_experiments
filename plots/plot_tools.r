@@ -616,10 +616,15 @@ autoCategories <- function(path, pattern)
 
 # Merge all the data coming from multiple categories, each category containing
 # the path to multiple csv files.
+#
+# Two different cases depending on the value of selected_columns
+# 1. NULL: all the csv files should have the same columns, all columns are kept
+# 2. other: keep only 'selected_columns', all files must have it
+#
 # All the csv files should have the same columns.
 # The data returned will contain two additional columns, the name of the category
 # and the path to the file containing the data
-gatherCategories <- function(categories)
+gatherCategories <- function(categories, selected_columns = NULL)
 {
     data <- NULL
     for (catName in names(categories))
@@ -627,11 +632,14 @@ gatherCategories <- function(categories)
         for (path in categories[[catName]])
         {
             pathData <- read.csv(path)
+            if (!is.null(selected_columns))
+                pathData <- pathData[,selected_columns]
             # Skip empty files
             if (nrow(pathData) == 0)
                 next
             pathData$category <- catName
             pathData$path <- path
+            print(names(pathData))
             if (is.null(data)) {
                 data <- pathData
             } else {
