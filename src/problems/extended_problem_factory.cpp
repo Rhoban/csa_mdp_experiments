@@ -7,6 +7,7 @@
 #include "problems/simulated_cart_pole.h"
 #include "problems/ssl_ball_approach.h"
 #include "problems/ssl_dynamic_ball_approach.h"
+#include "problems/multi_agent_line_approach.h"
 
 namespace csa_mdp
 {
@@ -29,6 +30,7 @@ void ExtendedProblemFactory::registerExtraProblems()
   registerExtraBuilder("SimulatedCartPole", []() { return std::unique_ptr<Problem>(new SimulatedCartPole); });
   registerExtraBuilder("SSLBallApproach", []() { return std::unique_ptr<Problem>(new SSLBallApproach); });
   registerExtraBuilder("SSLDynamicBallApproach", []() { return std::unique_ptr<Problem>(new SSLDynamicBallApproach); });
+  registerExtraBuilder("MultiAgentLineApproach", []() { return std::unique_ptr<Problem>(new MultiAgentLineApproach); });
 }
 
 std::unique_ptr<BlackBoxProblem> ExtendedProblemFactory::buildBlackBox(const std::string& name)
