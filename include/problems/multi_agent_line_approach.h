@@ -26,9 +26,6 @@ public:
 
   std::vector<int> getLearningDimensions() const override;
 
-  std::pair<Eigen::VectorXd, Eigen::MatrixXd>
-  splitMultiAgentState(const Eigen::VectorXd& exhaustive_state) const override;
-
   bool isTerminal(const Eigen::VectorXd& state) const;
 
   double getReward(const Eigen::VectorXd& state, const Eigen::VectorXd& action, const Eigen::VectorXd& dst) const;
@@ -59,13 +56,6 @@ protected:
   // STATE LIMITS
   /// Field limits
   double field_limit_min, field_limit_max;
-  /// state elements
-  int nb_static_element, nb_robots;
-  /// state reduction
-  int nb_robots_policy;
-
-  // ROBOTS SET UP
-  double robot_size;
 
   // ACTION_LIMITS
   /// The maximal cartesian speed [m/s]
