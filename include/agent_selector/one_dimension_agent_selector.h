@@ -16,8 +16,8 @@ public:
 
   double getDist(const Eigen::VectorXd agent_1, const Eigen::VectorXd agent_2) override;
 
-  Eigen::MatrixXd getRevelantAgent(const Eigen::VectorXd world, const Eigen::MatrixXd agents, const int main_agent,
-                                   int nb_selected_agents) override;
+  Eigen::VectorXd getRevelantAgents(const Eigen::VectorXd world, const Eigen::MatrixXd agents,
+                                    const int main_agent) override;
 
   std::vector<std::pair<double, double>> scoringAgent(const Eigen::MatrixXd agents, const Eigen::VectorXd pOI,
                                                       const Eigen::VectorXd score_pOI);
