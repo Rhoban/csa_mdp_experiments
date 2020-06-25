@@ -1,4 +1,5 @@
 #include "problems/multi_agent_line_approach.h"
+#include <iostream>
 
 namespace csa_mdp
 {
@@ -18,6 +19,10 @@ MultiAgentLineApproach::MultiAgentLineApproach()
   , collision_reward(-50)
   , out_of_space_reward(-200)
 {
+  nb_agents = 3;
+  nb_static_element = 1;
+  agent_size = 0.2;
+
   updateLimits();
 }
 
@@ -34,27 +39,26 @@ std::vector<int> MultiAgentLineApproach::getLearningDimensions() const
 void MultiAgentLineApproach::updateLimits()
 {
   Eigen::MatrixXd state_limits(nb_static_element + nb_agents, 2);
-  std::vector<Eigen::MatrixXd> action_limits;
+  Eigen::MatrixXd action_limits(nb_agents, 2);
 
   std::vector<std::string> state_names, action_names;
   // update static element -> only in state
-  for (int i = 0; i <= nb_static_element; i++)
+  for (int i = 0; i < nb_static_element; i++)
   {
     state_limits << field_limit_min, field_limit_max;
   }
+
   state_names.push_back("ball");
   // update agents -> state + action
-  for (int i = 0; i <= nb_agents; i++)
+  for (int i = 0; i < nb_agents; i++)
   {
-    Eigen::MatrixXd single_action_limits(nb_agents, 2);
     state_limits << field_limit_min, field_limit_max;
-    single_action_limits << -max_robot_speed, max_robot_speed;
-    action_limits.push_back(single_action_limits);
+    action_limits << -max_robot_speed, max_robot_speed;
     state_names.push_back("robot_" + std::to_string(i));
     action_names.push_back("speed_robot_" + std::to_string(i));
   }
   setStateLimits(state_limits);
-  setActionLimits(action_limits);
+  setActionLimits({ action_limits });
   setStateNames(state_names);
   setActionsNames({ action_names });
 }
@@ -102,7 +106,7 @@ Problem::Result MultiAgentLineApproach::getSuccessor(const Eigen::VectorXd& stat
   // 2. move ball
   std::uniform_real_distribution<double> shoot(robot_shoot_distance * (1 - shooting_noise),
                                                robot_shoot_distance * (1 + shooting_noise));
-  while (isRobotColliding(state.segment(nb_static_element, nb_agents), state(0)))
+  while (isRobotColliding(state, successor(0)))
   {
     successor(0) += shoot(*engine);
   }
@@ -138,10 +142,12 @@ Eigen::VectorXd MultiAgentLineApproach::getStartingState(std::default_random_eng
 
 bool MultiAgentLineApproach::isRobotColliding(const Eigen::VectorXd state, const double pos) const
 {
-  for (int i = 0; state.size(); i++)
+  for (int i = 0; i < state.size() - 1; i++)
   {
-    if (fabs(state(nb_static_element + i) - pos) < agent_size)
+    if ((float)std::abs(state(nb_static_element + i) - pos) <= (float)agent_size / 2)
+    {
       return true;
+    }
   }
   return false;
 }
