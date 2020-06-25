@@ -6,7 +6,7 @@ OneDimensionAgentSelector::OneDimensionAgentSelector() : score_main_agent(20)
 {
 }
 
-double OneDimensionAgentSelector::getDist(const Eigen::VectorXd agent_1, const Eigen::VectorXd agent_2)
+double OneDimensionAgentSelector::getDist(const Eigen::VectorXd agent_1, const Eigen::VectorXd agent_2) const
 {
   // rewrite for only one dimension agent
   if (agent_1.size() != agent_2.size())
@@ -21,8 +21,8 @@ double OneDimensionAgentSelector::getDist(const Eigen::VectorXd agent_1, const E
   }
 }
 
-Eigen::VectorXd OneDimensionAgentSelector::getRevelantAgents(const Eigen::VectorXd world, const Eigen::MatrixXd agents,
-                                                             const int main_agent)
+Eigen::VectorXd OneDimensionAgentSelector::getRevelantAgents(const Eigen::VectorXd& world,
+                                                             const Eigen::MatrixXd& agents, int main_agent) const
 {
   Eigen::VectorXd agent_state(nb_selected_agents);
   Eigen::MatrixXd agents_to_score = removeMainAgent(agents, main_agent);
@@ -46,9 +46,9 @@ Eigen::VectorXd OneDimensionAgentSelector::getRevelantAgents(const Eigen::Vector
   return agent_state;
 }
 
-std::vector<std::pair<double, double>> OneDimensionAgentSelector::scoringAgent(const Eigen::MatrixXd agents,
-                                                                               const Eigen::VectorXd pOI,
-                                                                               const Eigen::VectorXd score_pOI)
+std::vector<std::pair<double, double>> OneDimensionAgentSelector::scoringAgent(const Eigen::MatrixXd& agents,
+                                                                               const Eigen::VectorXd& pOI,
+                                                                               const Eigen::VectorXd& score_pOI) const
 {
   ///  /!\ missing sorting agent
 

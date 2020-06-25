@@ -14,13 +14,13 @@ class OneDimensionAgentSelector : public AgentSelector
 public:
   OneDimensionAgentSelector();
 
-  double getDist(const Eigen::VectorXd agent_1, const Eigen::VectorXd agent_2) override;
+  double getDist(const Eigen::VectorXd agent_1, const Eigen::VectorXd agent_2) const override;
 
-  Eigen::VectorXd getRevelantAgents(const Eigen::VectorXd world, const Eigen::MatrixXd agents,
-                                    const int main_agent) override;
+  Eigen::VectorXd getRevelantAgents(const Eigen::VectorXd& world, const Eigen::MatrixXd& agents,
+                                    int main_agent) const override;
 
-  std::vector<std::pair<double, double>> scoringAgent(const Eigen::MatrixXd agents, const Eigen::VectorXd pOI,
-                                                      const Eigen::VectorXd score_pOI);
+  std::vector<std::pair<double, double>> scoringAgent(const Eigen::MatrixXd& agents, const Eigen::VectorXd& pOI,
+                                                      const Eigen::VectorXd& score_pOI) const;
 
   Json::Value toJson() const override;
   void fromJson(const Json::Value& v, const std::string& dir_name) override;
