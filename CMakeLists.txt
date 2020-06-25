@@ -85,7 +85,7 @@ target_link_libraries(robot_kick_comparator ${catkin_LIBRARIES} csa_mdp_experime
 enable_testing()
 
 set(TESTS
-  problems/ssl_dynamic_ball_approach
+  problems/multi_agent_line_approach
   )
 
 if (CATKIN_ENABLE_TESTING)
