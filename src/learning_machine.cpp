@@ -1,6 +1,8 @@
 #include "learning_machine/learning_machine_factory.h"
 #include "problems/extended_problem_factory.h"
+#include "agent_selector/extended_agent_selector_factory.h"
 #include "policies/expert_approach.h"
+#include "policies/line_expert.h"
 #include "policies/mixed_approach.h"
 #include "policies/ok_seed.h"
 
@@ -18,10 +20,12 @@ int main(int argc, char** argv)
 
   // Registering extra features from csa_mdp
   PolicyFactory::registerExtraBuilder("ExpertApproach", []() { return std::unique_ptr<Policy>(new ExpertApproach); });
+  PolicyFactory::registerExtraBuilder("LineExpert", []() { return std::unique_ptr<Policy>(new LineExpert); });
   PolicyFactory::registerExtraBuilder("MixedApproach", []() { return std::unique_ptr<Policy>(new MixedApproach); });
   PolicyFactory::registerExtraBuilder("OKSeed", []() { return std::unique_ptr<Policy>(new OKSeed); });
 
   ExtendedProblemFactory::registerExtraProblems();
+  ExtendedAgentSelectorFactory::registerExtraAgentSelector();
 
   // Loading the learning Machine
   LearningMachineFactory lmf;
