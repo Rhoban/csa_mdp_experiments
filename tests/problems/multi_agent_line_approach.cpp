@@ -41,7 +41,7 @@ TEST(constructor, testRobotSpeed)
   state(2) = 3;
   state(3) = 7;
 
-  action = Eigen::VectorXd::Zero(3);
+  action = Eigen::VectorXd::Zero(4);
 
   r = multi_approach.getSuccessor(state, action, &engine);
 
@@ -50,9 +50,9 @@ TEST(constructor, testRobotSpeed)
   EXPECT_NEAR(3, r.successor(2), EPSILON);
   EXPECT_NEAR(7, r.successor(3), EPSILON);
 
-  action(0) = 0.2;
-  action(1) = 0.5;
-  action(2) = -0.4;
+  action(1) = 0.2;
+  action(2) = 0.5;
+  action(3) = -0.4;
   r = multi_approach.getSuccessor(state, action, &engine);
   EXPECT_NEAR(5, r.successor(0), EPSILON);
   EXPECT_NEAR(1.2, r.successor(1), EPSILON);
@@ -96,8 +96,8 @@ TEST(constructor, testRobotKick)
   EXPECT_NEAR(3, r.successor(0), EPSILON);
   state(0) = 2;  // Ball 1[m] backward
   state(1) = 2;
-  state(2) = 2.9;
-  state(3) = 4.1;
+  state(2) = 2.91;
+  state(3) = 4.09;
 
   r = multi_approach.getSuccessor(state, action, &engine);
   EXPECT_NEAR(5, r.successor(0), EPSILON);
