@@ -52,11 +52,16 @@ void MultiAgentLineApproach::updateLimits()
   // update agents -> state + action
   for (int i = 0; i < nb_agents; i++)
   {
-    state_limits << field_limit_min, field_limit_max;
-    action_limits << -max_robot_speed, max_robot_speed;
+    state_limits(i + nb_static_element, 0) = field_limit_min;
+
+    state_limits(i + nb_static_element, 1) = field_limit_max;
+    action_limits(i, 0) = -max_robot_speed;
+    action_limits(i, 1) = max_robot_speed;
+
     state_names.push_back("robot_" + std::to_string(i));
     action_names.push_back("speed_robot_" + std::to_string(i));
   }
+
   setStateLimits(state_limits);
   setActionLimits({ action_limits });
   setStateNames(state_names);
@@ -98,7 +103,8 @@ Problem::Result MultiAgentLineApproach::getSuccessor(const Eigen::VectorXd& stat
 
   for (int i = 0; i < nb_agents; i++)
   {
-    std::uniform_real_distribution<double> step(action(i) * (1 - walking_noise), action(i) * (1 + walking_noise));
+    std::uniform_real_distribution<double> step(action(i + 1) * (1 - walking_noise),
+                                                action(i + 1) * (1 + walking_noise));
 
     successor(i + nb_static_element) += step(*engine);
   }
@@ -121,7 +127,7 @@ Eigen::VectorXd MultiAgentLineApproach::getStartingState(std::default_random_eng
 {
   // init staring state
   // Creating the distribution
-  std::uniform_real_distribution<double> pos(field_limit_min, field_limit_max);
+  std::uniform_real_distribution<double> pos(field_limit_min + agent_size, field_limit_max - agent_size);
 
   Eigen::VectorXd state = Eigen::VectorXd::Zero(nb_static_element + nb_agents);
 
@@ -144,7 +150,7 @@ bool MultiAgentLineApproach::isRobotColliding(const Eigen::VectorXd state, const
 {
   for (int i = 0; i < state.size() - 1; i++)
   {
-    if ((float)std::abs(state(nb_static_element + i) - pos) <= (float)agent_size / 2)
+    if (std::abs(state(nb_static_element + i) - pos) <= agent_size / 2)
     {
       return true;
     }

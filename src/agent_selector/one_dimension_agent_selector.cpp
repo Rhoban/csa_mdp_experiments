@@ -1,5 +1,5 @@
 #include "agent_selector/one_dimension_agent_selector.h"
-
+#include <iostream>
 namespace csa_mdp
 {
 OneDimensionAgentSelector::OneDimensionAgentSelector() : score_main_agent(20)
@@ -24,25 +24,35 @@ double OneDimensionAgentSelector::getDist(const Eigen::VectorXd agent_1, const E
 Eigen::VectorXd OneDimensionAgentSelector::getRevelantAgents(const Eigen::VectorXd& world,
                                                              const Eigen::MatrixXd& agents, int main_agent) const
 {
-  Eigen::VectorXd agent_state(nb_selected_agents);
+  if (agents.rows() <= nb_selected_agents)
+  {
+    std::ostringstream oss;
+    oss << "AgentSelector::getRevelantAgent: agents.rows() < nb_selected_agents, " << agents.rows()
+        << " != " << nb_selected_agents;
+    throw std::runtime_error(oss.str());
+  }
+  Eigen::VectorXd agent_state(nb_selected_agents + 1);
   Eigen::MatrixXd agents_to_score = removeMainAgent(agents, main_agent);
   // set Points of interests
   int nb_pOI = world.size() + 1;
   Eigen::VectorXd pOI(nb_pOI), score_pOI(nb_pOI);
 
-  pOI << agents.row(main_agent);
-  score_pOI << score_main_agent;
+  pOI(0) = agents(main_agent, 0);
+  score_pOI(0) = score_main_agent;
   for (int i = 1; i < nb_pOI; i++)
   {
-    pOI << world(i - 1);
-    score_pOI << score_pOI(i - 1) / 2;
+    pOI(i) = world(i - 1);
+    score_pOI(i) = score_pOI(i - 1) / 2;
   }
 
   std::vector<std::pair<double, double>> score_agents = scoringAgent(agents_to_score, pOI, score_pOI);
   // select the closests agents
+  agent_state(0) = agents(main_agent, 0);
 
   for (int i = 0; i < nb_selected_agents; i++)
-    agent_state << score_agents.at(i).second;
+
+    agent_state(i + 1) = score_agents.at(i).second;
+
   return agent_state;
 }
 
@@ -51,6 +61,13 @@ std::vector<std::pair<double, double>> OneDimensionAgentSelector::scoringAgent(c
                                                                                const Eigen::VectorXd& score_pOI) const
 {
   ///  /!\ missing sorting agent
+  std::vector<double> sorted_agents;
+
+  for (int i = 0; i < agents.rows(); i++)
+  {
+    sorted_agents.push_back(agents(i, 0));
+  }
+  std::sort(sorted_agents.begin(), sorted_agents.end());
 
   // init validate/score
   std::vector<bool> validatePOI;
@@ -67,7 +84,7 @@ std::vector<std::pair<double, double>> OneDimensionAgentSelector::scoringAgent(c
     // for each point of interest calculate distance with agent selected
     for (int p = 0; p < pOI.size(); p++)
     {
-      if (!validatePOI.at(p) && agents(r, 0) > pOI(p))
+      if (!validatePOI.at(p) && sorted_agents.at(r) > pOI(p))
       {
         validatePOI.at(p) = true;
         // add bonus if it's closest
@@ -78,11 +95,11 @@ std::vector<std::pair<double, double>> OneDimensionAgentSelector::scoringAgent(c
         }
       }
       Eigen::VectorXd agent(1);
-      agent << agents.row(r);
+      agent << sorted_agents.at(r);
 
       score += getDist(pOI.segment(p, 1), agent);
     }
-    score_agents.push_back(std::make_pair(score, agents(r, 0)));
+    score_agents.push_back(std::make_pair(score, sorted_agents.at(r)));
   }
   for (int p = 0; p < pOI.size(); p++)
   {
