@@ -3,15 +3,24 @@
 {
     "class name" : "LearningMachineBlackBox",
     "content" : {
-        "problem_path" : "../problems/ball_approach.json",
+        "problem_path" : "../problems/multi_agent_line_approach.json",
         "learner" : {
             "class name" : "FakeLearner",
             "content" : {
                 "policy" : {
-                    "class name" : "ExpertApproach",
-                    "content" : {
-                        "type" : "polar"
-                    }
+                    "class name" : "LineExpert",
+		    "content": {
+			"agent_selector" : {
+			    "class name" : "OneDimensionAgentSelector",
+			    "content" : {
+				"model" : {
+				    "class name" : "MultiAgentLineApproach",
+				    "content" : {
+				    }
+				}
+			    }
+			}
+		    }
                 }
             }
         },

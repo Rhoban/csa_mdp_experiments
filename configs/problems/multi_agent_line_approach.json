@@ -1,0 +1,6 @@
+{
+    "class name" : "MultiAgentLineApproach",
+    "content" : {
+        "dt" : 0.5
+    }
+}
