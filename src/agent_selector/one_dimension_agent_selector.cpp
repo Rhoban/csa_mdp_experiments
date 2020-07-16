@@ -31,6 +31,7 @@ Eigen::VectorXd OneDimensionAgentSelector::getRevelantAgents(const Eigen::Vector
         << " != " << nb_selected_agents;
     throw std::runtime_error(oss.str());
   }
+
   Eigen::VectorXd agent_state(nb_selected_agents + 1);
   Eigen::MatrixXd agents_to_score = removeMainAgent(agents, main_agent);
   // set Points of interests
@@ -46,11 +47,11 @@ Eigen::VectorXd OneDimensionAgentSelector::getRevelantAgents(const Eigen::Vector
   }
 
   std::vector<std::pair<double, double>> score_agents = scoringAgent(agents_to_score, pOI, score_pOI);
+
   // select the closests agents
   agent_state(0) = agents(main_agent, 0);
 
   for (int i = 0; i < nb_selected_agents; i++)
-
     agent_state(i + 1) = score_agents.at(i).second;
 
   return agent_state;
@@ -91,7 +92,7 @@ std::vector<std::pair<double, double>> OneDimensionAgentSelector::scoringAgent(c
         score -= score_pOI(p);
         if (r != 0)
         {
-          score_agents.back().first += score_pOI(p);
+          score_agents.back().first -= score_pOI(p);
         }
       }
       Eigen::VectorXd agent(1);
