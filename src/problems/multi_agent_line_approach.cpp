@@ -136,7 +136,7 @@ Eigen::VectorXd MultiAgentLineApproach::getStartingState(std::default_random_eng
   {
     // TODO : add non collision for begining ?
     double tmp_pos = pos(*engine);
-    while (isRobotColliding(state.segment(nb_static_element, i), tmp_pos))
+    while (isRobotColliding(state.segment(0, i), tmp_pos, 1))
     {
       tmp_pos = pos(*engine);
     }
@@ -146,11 +146,11 @@ Eigen::VectorXd MultiAgentLineApproach::getStartingState(std::default_random_eng
   return state;
 }
 
-bool MultiAgentLineApproach::isRobotColliding(const Eigen::VectorXd state, const double pos) const
+bool MultiAgentLineApproach::isRobotColliding(const Eigen::VectorXd state, const double pos, int twoRobots) const
 {
   for (int i = 0; i < state.size() - 1; i++)
   {
-    if (std::abs(state(nb_static_element + i) - pos) <= agent_size / 2)
+    if (std::abs(state(nb_static_element + i) - pos) <= agent_size / (2 - twoRobots))
     {
       return true;
     }
