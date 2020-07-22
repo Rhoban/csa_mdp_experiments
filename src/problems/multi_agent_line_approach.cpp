@@ -29,7 +29,7 @@ MultiAgentLineApproach::MultiAgentLineApproach()
 std::vector<int> MultiAgentLineApproach::getLearningDimensions() const
 {
   std::vector<int> dim;
-  for (int i = 0; i <= nb_static_element + nb_agents; i++)
+  for (int i = 0; i < nb_static_element + nb_agents; i++)
   {
     dim.push_back(i);
   }
