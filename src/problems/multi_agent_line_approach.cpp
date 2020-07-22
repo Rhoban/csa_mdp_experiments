@@ -45,7 +45,8 @@ void MultiAgentLineApproach::updateLimits()
   // update static element -> only in state
   for (int i = 0; i < nb_static_element; i++)
   {
-    state_limits << field_limit_min, field_limit_max;
+    state_limits(i, 0) = field_limit_min;
+    state_limits(i, 1) = field_limit_max;
   }
 
   state_names.push_back("ball");
