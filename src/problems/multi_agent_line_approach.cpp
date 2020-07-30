@@ -6,7 +6,7 @@ namespace csa_mdp
 MultiAgentLineApproach::MultiAgentLineApproach()
   :  // field limits
   field_limit_min(0)
-  , field_limit_max(10)
+  , field_limit_max(5)
   // Walk
   , max_robot_speed(0.2)
   , walking_noise(0.1)
@@ -113,7 +113,7 @@ Problem::Result MultiAgentLineApproach::getSuccessor(const Eigen::VectorXd& stat
   // 2. move ball
   std::uniform_real_distribution<double> shoot(robot_shoot_distance * (1 - shooting_noise),
                                                robot_shoot_distance * (1 + shooting_noise));
-  while (isRobotColliding(state, successor(0)))
+  while (isRobotColliding(state.segment(nb_static_element, nb_agents), successor(0)))
   {
     successor(0) += shoot(*engine);
   }
@@ -135,7 +135,6 @@ Eigen::VectorXd MultiAgentLineApproach::getStartingState(std::default_random_eng
   // update state with random value on field
   for (int i = 0; i < nb_static_element + nb_agents; i++)
   {
-    // TODO : add non collision for begining ?
     double tmp_pos = pos(*engine);
     while (isRobotColliding(state.segment(0, i), tmp_pos, 1))
     {
@@ -149,9 +148,9 @@ Eigen::VectorXd MultiAgentLineApproach::getStartingState(std::default_random_eng
 
 bool MultiAgentLineApproach::isRobotColliding(const Eigen::VectorXd state, const double pos, int twoRobots) const
 {
-  for (int i = 0; i < state.size() - 1; i++)
+  for (int i = 0; i < state.size(); i++)
   {
-    if (std::abs(state(nb_static_element + i) - pos) <= agent_size / (2 - twoRobots))
+    if (std::abs(state(i) - pos) <= agent_size / (2 - twoRobots))
     {
       return true;
     }
