@@ -19,10 +19,6 @@ MultiAgentLineApproach::MultiAgentLineApproach()
   , collision_reward(-50)
   , out_of_space_reward(-200)
 {
-  nb_agents = 3;
-  nb_static_element = 1;
-  agent_size = 0.2;
-
   updateLimits();
 }
 
@@ -48,13 +44,11 @@ void MultiAgentLineApproach::updateLimits()
     state_limits(i, 0) = field_limit_min;
     state_limits(i, 1) = field_limit_max;
   }
-
   state_names.push_back("ball");
   // update agents -> state + action
   for (int i = 0; i < nb_agents; i++)
   {
     state_limits(i + nb_static_element, 0) = field_limit_min;
-
     state_limits(i + nb_static_element, 1) = field_limit_max;
     action_limits(i, 0) = -max_robot_speed;
     action_limits(i, 1) = max_robot_speed;
@@ -62,7 +56,6 @@ void MultiAgentLineApproach::updateLimits()
     state_names.push_back("robot_" + std::to_string(i));
     action_names.push_back("speed_robot_" + std::to_string(i));
   }
-
   setStateLimits(state_limits);
   setActionLimits({ action_limits });
   setStateNames(state_names);
@@ -136,7 +129,7 @@ Eigen::VectorXd MultiAgentLineApproach::getStartingState(std::default_random_eng
   for (int i = 0; i < nb_static_element + nb_agents; i++)
   {
     double tmp_pos = pos(*engine);
-    while (isRobotColliding(state.segment(0, i), tmp_pos, 1))
+    while (isRobotColliding(state.segment(0, i), tmp_pos, true))
     {
       tmp_pos = pos(*engine);
     }
@@ -146,15 +139,26 @@ Eigen::VectorXd MultiAgentLineApproach::getStartingState(std::default_random_eng
   return state;
 }
 
-bool MultiAgentLineApproach::isRobotColliding(const Eigen::VectorXd state, const double pos, int twoRobots) const
+bool MultiAgentLineApproach::isRobotColliding(const Eigen::VectorXd state, const double pos, bool init) const
 {
   for (int i = 0; i < state.size(); i++)
   {
-    if (std::abs(state(i) - pos) <= agent_size / (2 - twoRobots))
+    if (init)
     {
-      return true;
+      if (std::abs(state(i) - pos) <= agent_size /*+ 2 * max_robot_speed * (i != 0)*/)
+      {
+        return true;
+      }
+    }
+    else
+    {
+      if (std::abs(state(i) - pos) <= agent_size / 2)
+      {
+        return true;
+      }
     }
   }
+
   return false;
 }
 

@@ -50,7 +50,7 @@ public:
   /// Ensure that limits are consistent with the parameters
   void updateLimits();
   /// Does the element (pos) is colliding with one in the state
-  bool isRobotColliding(const Eigen::VectorXd state, const double pos, int twoRobots = 0) const;
+  bool isRobotColliding(const Eigen::VectorXd state, const double pos, bool init = false) const;
 
 protected:
   // STATE LIMITS
