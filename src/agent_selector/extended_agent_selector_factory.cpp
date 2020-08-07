@@ -15,7 +15,5 @@ void ExtendedAgentSelectorFactory::registerExtraAgentSelector()
   if (performed)
     return;
   performed = true;
-  registerExtraBuilder("OneDimensionAgentSelector",
-                       []() { return std::unique_ptr<AgentSelector>(new OneDimensionAgentSelector); });
 }
 }  // namespace csa_mdp
