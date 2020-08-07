@@ -4,6 +4,7 @@
 
 #include "rhoban_csa_mdp/core/policy.h"
 #include "rhoban_csa_mdp/core/problem.h"
+#include "rhoban_csa_mdp/core/agent_selector.h"
 
 #include <fstream>
 #include <memory>
@@ -95,6 +96,8 @@ protected:
 
   /// The problem being solved
   std::shared_ptr<csa_mdp::Problem> problem;
+
+  std::unique_ptr<AgentSelector> agent_selector;
 
   // Current status
   int run;

@@ -3,6 +3,7 @@
 #include "rhoban_csa_mdp/core/history.h"
 #include "rhoban_csa_mdp/core/problem_factory.h"
 #include "rhoban_csa_mdp/solvers/learner_factory.h"
+#include "rhoban_csa_mdp/core/agent_selector_factory.h"
 
 #include "rhoban_utils/timing/benchmark.h"
 
@@ -75,8 +76,17 @@ void LearningMachine::propagate()
   // Only propagate if both problem and learner have been set
   if (problem && learner)
   {
-    learner->setStateLimits(getLearningSpace(problem->getStateLimits()));
-    learner->setActionLimits(problem->getActionsLimits());
+    if (agent_selector)
+    {
+      learner->setStateLimits(agent_selector->getStateLimits());
+      learner->setActionLimits(agent_selector->getActionsLimits());
+    }
+    else
+    {
+      learner->setStateLimits(getLearningSpace(problem->getStateLimits()));
+      learner->setActionLimits(problem->getActionsLimits());
+    }
+
     learner->setDiscount(discount);
     learner->setNbThreads(nb_threads);
   }
@@ -109,7 +119,20 @@ void LearningMachine::doRun()
 
 void LearningMachine::doStep()
 {
-  Eigen::VectorXd cmd = learner->getAction(getLearningState(status.successor));
+  Eigen::VectorXd cmd(learning_dimensions.size());
+  if (agent_selector)
+  {
+    int action_dims = agent_selector->getActionsLimits().size();
+    cmd.resize(1 + action_dims * agent_selector->getNbAgents());
+    cmd(0) = 0;
+    for (int i = 0; i < agent_selector->getNbAgents(); i++)
+    {
+      cmd.segment(1 + i, action_dims) =
+          learner->getAction(agent_selector->getRelevantState(status.successor, i)).segment(1, action_dims);
+    }
+  }
+  else
+    cmd = learner->getAction(getLearningState(status.successor));
   Eigen::VectorXd last_state = status.successor;
   applyAction(cmd);
   if (save_run_logs)
@@ -412,6 +435,8 @@ void LearningMachine::fromJson(const Json::Value& v, const std::string& dir_name
   }
   setProblem(std::move(tmp_problem));
   // Override learning dimensions if custom config is provided
+  AgentSelectorFactory().tryRead(v, "agent_selector", dir_name, &agent_selector);
+
   std::vector<int> new_learning_dims;
   rhoban_utils::tryReadVector(v, "learning_dimensions", &new_learning_dims);
   if (new_learning_dims.size() > 0)
